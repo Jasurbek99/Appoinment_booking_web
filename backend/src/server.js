@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { config } from './config.js';
 import { authRouter } from './routes/auth.js';
+import { usersRouter } from './routes/users.js';
 import { errorMiddleware } from './middleware/error.js';
 
 export function createApp() {
@@ -18,6 +19,7 @@ export function createApp() {
   });
 
   app.use('/api/auth', authRouter);
+  app.use('/api/users', usersRouter);
 
   app.use(errorMiddleware);
   return app;
