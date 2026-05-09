@@ -4,6 +4,7 @@ import cors from 'cors';
 import { config } from './config.js';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
+import { causesRouter } from './routes/causes.js';
 import { errorMiddleware } from './middleware/error.js';
 
 export function createApp() {
@@ -20,6 +21,7 @@ export function createApp() {
 
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
+  app.use('/api/causes', causesRouter);
 
   app.use(errorMiddleware);
   return app;
