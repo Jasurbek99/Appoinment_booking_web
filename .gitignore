@@ -10,6 +10,10 @@ node_modules/
 dist/
 build/
 .vite/
+coverage/
+
+# Local data volumes
+mssql-data/
 
 # Logs
 *.log
@@ -20,3 +24,6 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Claude Code local settings (per-user; share .claude/settings.json if needed)
+.claude/settings.local.json
