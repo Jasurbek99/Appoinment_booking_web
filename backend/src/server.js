@@ -1,21 +1,40 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
 import { config } from './config.js';
+import { authRouter } from './routes/auth.js';
+import { errorMiddleware } from './middleware/error.js';
 
-const app = express();
-app.disable('x-powered-by');
-app.use(express.json());
+export function createApp() {
+  const app = express();
+  app.disable('x-powered-by');
 
-app.get('/health', (_req, res) => {
-  res.json({ ok: true, env: config.env });
-});
+  app.use(cookieParser());
+  app.use(cors({ credentials: true, origin: config.corsOrigin }));
+  app.use(express.json());
 
-const server = app.listen(config.port, () => {
-  console.log(`[server] listening on http://localhost:${config.port}`);
-});
+  app.get('/health', (_req, res) => {
+    res.json({ ok: true, env: config.env });
+  });
 
-const shutdown = (signal) => {
-  console.log(`[server] ${signal} received, shutting down`);
-  server.close(() => process.exit(0));
-};
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
+  app.use('/api/auth', authRouter);
+
+  app.use(errorMiddleware);
+  return app;
+}
+
+// Only start a listener when this file is executed directly (not when imported by tests).
+const isMainEntry = import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`;
+if (isMainEntry) {
+  const app = createApp();
+  const server = app.listen(config.port, () => {
+    console.log(`[server] listening on http://localhost:${config.port}`);
+  });
+
+  const shutdown = (signal) => {
+    console.log(`[server] ${signal} received, shutting down`);
+    server.close(() => process.exit(0));
+  };
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+}
