@@ -12,6 +12,7 @@ import { appointmentsRouter } from './routes/appointments.js';
 import { publicRouter } from './routes/public.js';
 import { employeesRouter } from './routes/employees.js';
 import { journalRouter } from './routes/journal.js';
+import { statsRouter } from './routes/stats.js';
 import { errorMiddleware } from './middleware/error.js';
 
 export function createApp() {
@@ -33,6 +34,7 @@ export function createApp() {
   app.use('/api/public', publicRouter);
   app.use('/api/employees', employeesRouter);
   app.use('/api/journal', journalRouter);
+  app.use('/api/stats', statsRouter);
 
   app.use(errorMiddleware);
   return app;

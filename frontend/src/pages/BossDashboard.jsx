@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastProvider.jsx';
 import { AppointmentCard } from '../components/AppointmentCard.jsx';
 import { RejectModal } from '../components/RejectModal.jsx';
 import { Empty } from '../components/primitives.jsx';
+import { BossAnalytics } from '../components/BossAnalytics.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 
 const TABS = ['today', 'future', 'analytics'];
@@ -126,5 +127,5 @@ function FutureStub() {
   return <div className="text-stone-500 text-sm">Будущие — Шаг 9 (расширение).</div>;
 }
 function AnalyticsStub() {
-  return <div className="text-stone-500 text-sm">Аналитика — Шаг 17.</div>;
+  return <BossAnalytics />;
 }
