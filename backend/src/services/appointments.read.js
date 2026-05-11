@@ -108,12 +108,6 @@ export async function listPublicByLastName(lastName, opts = {}) {
   );
 }
 
-export async function getAppointmentById(id, { employeeLookup = null } = {}) {
-  const list = await listAppointments({ mode: 'all', _byId: id }, { employeeLookup });
-  // Tiny inefficiency for v1: filter after fetch. Replace with a direct query if profiling shows it.
-  return list.find((a) => a.id === id) || null;
-}
-
 export async function getAppointmentRow(id) {
   const pool = await getPool();
   const r = await pool

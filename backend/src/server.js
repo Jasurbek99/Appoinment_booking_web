@@ -1,6 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import { pathToFileURL } from 'node:url';
 import { config } from './config.js';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
@@ -32,7 +33,9 @@ export function createApp() {
 }
 
 // Only start a listener when this file is executed directly (not when imported by tests).
-const isMainEntry = import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`;
+// On Windows, import.meta.url uses three slashes (file:///D:/...). Build the same shape
+// from process.argv[1] via pathToFileURL so the comparison is portable.
+const isMainEntry = import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMainEntry) {
   const app = createApp();
   const server = app.listen(config.port, () => {

@@ -1,8 +1,7 @@
-// Vitest globalSetup. Runs once before the test suite.
-// Forces the test database name and ensures migrations are applied.
+// Vitest globalSetup.
 //
-// Per-test cleanup (truncating tables between tests) lives in a fixture
-// added later when the first integration test exists.
+// Integration tests need MSSQL up. To skip them (e.g. for syntax-only or
+// unit-only runs without docker), set RUN_DB_TESTS=0. Default: 1.
 
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +11,11 @@ const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 export default async function setup() {
   process.env.NODE_ENV = 'test';
+
+  if (process.env.RUN_DB_TESTS === '0' || process.env.RUN_DB_TESTS === 'false') {
+    console.log('[test setup] RUN_DB_TESTS=0 — skipping migrations.');
+    return;
+  }
 
   const result = spawnSync(
     process.execPath,

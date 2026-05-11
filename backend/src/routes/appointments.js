@@ -64,6 +64,13 @@ appointmentsRouter.post('/', requireStaff, async (req, res, next) => {
   }
 });
 
+const ACTION_TO_EVENT = {
+  approve: 'approved',
+  reject: 'rejected',
+  invite: 'invited',
+  complete: 'completed',
+};
+
 function transitionRoute(action, schema = null) {
   return async (req, res, next) => {
     try {
@@ -76,7 +83,7 @@ function transitionRoute(action, schema = null) {
         note = parse.data.reason;
       }
       const dto = await writeSvc.transition({ id, action, actor: req.user, note });
-      emitAppointmentEvent(req.app.get('io'), action === 'reject' ? 'rejected' : action === 'approve' ? 'approved' : action === 'invite' ? 'invited' : 'completed', dto);
+      emitAppointmentEvent(req.app.get('io'), ACTION_TO_EVENT[action], dto);
       res.json(dto);
     } catch (err) {
       next(err);
