@@ -12,6 +12,7 @@
     "migrate": "node --env-file=../.env src/db/migrate.js",
     "migrate:test": "node --env-file=../.env src/db/migrate.js --test",
     "seed": "node --env-file=../.env src/db/seed.js",
+    "dev-seed": "node --env-file=../.env src/dev-seed.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src tests"
