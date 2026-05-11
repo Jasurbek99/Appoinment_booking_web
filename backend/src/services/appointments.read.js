@@ -3,7 +3,7 @@
 
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
-import { toAppointmentDTO } from './appointments.serializer.js';
+import { toAppointmentDTO, toPublicAppointmentDTO } from './appointments.serializer.js';
 
 const APPT_COLUMNS = `
   a.id, a.visitor_type, a.employee_id,
@@ -17,7 +17,7 @@ const HIST_COLUMNS = `
   u.display_name, u.role
 `;
 
-function buildWhere({ mode, bossId, status, date }) {
+function buildWhere({ mode, bossId, status, date, lastName }) {
   const clauses = [];
   const inputs = [];
 
@@ -31,6 +31,11 @@ function buildWhere({ mode, bossId, status, date }) {
   } else if (mode === 'date') {
     clauses.push(`a.visit_date = @date`);
     inputs.push({ name: 'date', type: sql.Date, value: date });
+  } else if (mode === 'public') {
+    clauses.push(
+      `a.visitor_last_name = @lastName AND a.visit_date >= DATEADD(day, -30, CAST(GETDATE() AS DATE))`,
+    );
+    inputs.push({ name: 'lastName', type: sql.NVarChar(100), value: lastName });
   } else if (mode === 'all') {
     // no date filter
   }
@@ -56,14 +61,15 @@ const ORDER_BY = `
   a.created_at ASC
 `;
 
-export async function listAppointments(opts = {}, { employeeLookup = null } = {}) {
+export async function listAppointments(opts = {}, { employeeLookup = null, serializer = toAppointmentDTO, limit = null } = {}) {
   const pool = await getPool();
   const { where, inputs } = buildWhere(opts);
 
   const apptReq = pool.request();
   for (const i of inputs) apptReq.input(i.name, i.type, i.value);
+  const top = limit ? `TOP ${Number(limit)}` : '';
   const apptResult = await apptReq.query(`
-    SELECT ${APPT_COLUMNS}
+    SELECT ${top} ${APPT_COLUMNS}
     FROM appointments a
     ${where}
     ORDER BY ${ORDER_BY}
@@ -91,7 +97,15 @@ export async function listAppointments(opts = {}, { employeeLookup = null } = {}
     historyByAppt.get(h.appointment_id).push(h);
   }
 
-  return rows.map((r) => toAppointmentDTO(r, historyByAppt.get(r.id) || [], employeeLookup));
+  return rows.map((r) => serializer(r, historyByAppt.get(r.id) || [], employeeLookup));
+}
+
+// Convenience wrapper for the public worker search.
+export async function listPublicByLastName(lastName, opts = {}) {
+  return listAppointments(
+    { mode: 'public', lastName },
+    { ...opts, serializer: toPublicAppointmentDTO, limit: 20 },
+  );
 }
 
 export async function getAppointmentById(id, { employeeLookup = null } = {}) {
