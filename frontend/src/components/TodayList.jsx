@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAppointments, useTransitionAppointment } from '../hooks/useAppointments.js';
+import { useLiveAppointments } from '../hooks/useAppointmentEvents.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useToast } from '../contexts/ToastProvider.jsx';
 import { AppointmentCard } from './AppointmentCard.jsx';
@@ -12,6 +13,7 @@ export function TodayList({ filter }) {
   const { data, isLoading, error } = useAppointments({ mode: 'today' });
   const transition = useTransitionAppointment();
   const [rejectFor, setRejectFor] = useState(null);
+  useLiveAppointments();
 
   if (isLoading) return <ListSkeleton />;
   if (error) return <Empty>Не удалось загрузить</Empty>;

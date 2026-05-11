@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { TopBar } from '../components/TopBar.jsx';
 import { useAppointments, useTransitionAppointment } from '../hooks/useAppointments.js';
+import { useLiveAppointments } from '../hooks/useAppointmentEvents.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useToast } from '../contexts/ToastProvider.jsx';
 import { AppointmentCard } from '../components/AppointmentCard.jsx';
@@ -50,6 +51,7 @@ function BossToday() {
   const { data, isLoading, error } = useAppointments({ mode: 'today' });
   const transition = useTransitionAppointment();
   const [rejectFor, setRejectFor] = useState(null);
+  useLiveAppointments();
 
   const { pending, queue } = useMemo(() => {
     const list = data || [];

@@ -1,18 +1,50 @@
-// Step 8 stub. Step 14 replaces with real socket.io-client wiring + room subs.
-// Components subscribe via useAppointmentEvents — until Step 14 lands the
-// callbacks just never fire.
-
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
+import { useAuth } from './AuthContext.jsx';
 
 const SocketContext = createContext({ socket: null });
 
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || undefined; // undefined => same origin
+
 export function SocketProvider({ children }) {
-  return <SocketContext.Provider value={{ socket: null }}>{children}</SocketContext.Provider>;
+  const { user } = useAuth();
+  const [socket, setSocket] = useState(null);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    // Establish a connection regardless of auth — the server allows anonymous
+    // workers to connect (no JWT in cookie) for /status page subscriptions.
+    const s = io(SOCKET_URL, {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+    });
+    ref.current = s;
+    setSocket(s);
+
+    return () => {
+      s.disconnect();
+      ref.current = null;
+      setSocket(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]); // re-connect when login/logout changes the cookie
+
+  return <SocketContext.Provider value={{ socket }}>{children}</SocketContext.Provider>;
 }
 
 export function useSocket() {
   return useContext(SocketContext);
 }
 
-// No-op until Step 14.
-export function useAppointmentEvents() {}
+// Subscribe to one or more appointment:* events. Handlers map: { 'created': fn, 'approved': fn, ... }
+export function useAppointmentEvents(handlers) {
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket || !handlers) return;
+    const entries = Object.entries(handlers);
+    for (const [name, fn] of entries) socket.on(`appointment:${name}`, fn);
+    return () => {
+      for (const [name, fn] of entries) socket.off(`appointment:${name}`, fn);
+    };
+  }, [socket, handlers]);
+}

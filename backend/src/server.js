@@ -1,8 +1,10 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { config } from './config.js';
+import { setupSockets } from './sockets/index.js';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
 import { causesRouter } from './routes/causes.js';
@@ -36,13 +38,22 @@ export function createApp() {
   return app;
 }
 
+// Build the http server with both Express and Socket.io attached.
+export function createHttpServer() {
+  const app = createApp();
+  const httpServer = createServer(app);
+  const io = setupSockets(httpServer);
+  app.set('io', io);
+  return { app, httpServer, io };
+}
+
 // Only start a listener when this file is executed directly (not when imported by tests).
 // On Windows, import.meta.url uses three slashes (file:///D:/...). Build the same shape
 // from process.argv[1] via pathToFileURL so the comparison is portable.
 const isMainEntry = import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMainEntry) {
-  const app = createApp();
-  const server = app.listen(config.port, () => {
+  const { httpServer } = createHttpServer();
+  const server = httpServer.listen(config.port, () => {
     console.log(`[server] listening on http://localhost:${config.port}`);
   });
 
