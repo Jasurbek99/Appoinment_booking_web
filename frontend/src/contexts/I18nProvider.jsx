@@ -1,56 +1,36 @@
-// Step 8 stub. Step 15 replaces this with real react-i18next wiring.
-// Exposing the same {lang, setLang, t} surface now means components written
-// in steps 9-14 won't need touch-ups when i18n lands.
-
-import { createContext, useContext, useState, useCallback } from 'react';
-
-const I18nContext = createContext(null);
-
-const FALLBACK = {
-  ru: {
-    appName: 'Запись на приём',
-    today: 'Сегодня',
-    future: 'Будущие',
-    journal: 'Журнал',
-    settings: 'Настройки',
-    analytics: 'Аналитика',
-    login: 'Войти',
-    logout: 'Выйти',
-    username: 'Логин',
-    password: 'Пароль',
-  },
-  tk: {
-    appName: 'Kabula ýazylyş',
-    today: 'Şu gün',
-    future: 'Geljekki',
-    journal: 'Žurnal',
-    settings: 'Sazlamalar',
-    analytics: 'Analitika',
-    login: 'Girmek',
-    logout: 'Çykmak',
-    username: 'Login',
-    password: 'Açar söz',
-  },
-};
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n/index.js';
 
 export function I18nProvider({ children }) {
-  const [lang, setLangState] = useState(() => localStorage.getItem('lang') || 'ru');
-
-  const setLang = useCallback((next) => {
-    setLangState(next);
-    localStorage.setItem('lang', next);
+  // Ensure i18n is initialized before children render.
+  useEffect(() => {
+    // i18n initialized at import time; nothing to do here.
   }, []);
+  return children;
+}
 
-  const t = useCallback(
-    (key) => FALLBACK[lang]?.[key] ?? FALLBACK.ru[key] ?? key,
-    [lang],
+// Public hook compatible with the Step 8 stub: {lang, setLang, t}.
+export function useI18n() {
+  const { t, i18n: instance } = useTranslation();
+  const [lang, setLangState] = useState(instance.language || 'ru');
+
+  useEffect(() => {
+    const onChange = (next) => setLangState(next);
+    instance.on('languageChanged', onChange);
+    return () => instance.off('languageChanged', onChange);
+  }, [instance]);
+
+  const setLang = useCallback(
+    (next) => {
+      instance.changeLanguage(next);
+      if (typeof localStorage !== 'undefined') localStorage.setItem('lang', next);
+    },
+    [instance],
   );
 
-  return <I18nContext.Provider value={{ lang, setLang, t }}>{children}</I18nContext.Provider>;
+  return { lang, setLang, t };
 }
 
-export function useI18n() {
-  const ctx = useContext(I18nContext);
-  if (!ctx) throw new Error('useI18n must be used inside I18nProvider');
-  return ctx;
-}
+// Re-export for convenience.
+export { i18n };
