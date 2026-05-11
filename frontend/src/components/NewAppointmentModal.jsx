@@ -50,9 +50,18 @@ export function NewAppointmentModal({ open, onClose }) {
     setDuplicate(null);
     let input;
     if (tab === 'employee' && employee && !manualMode) {
+      // Snapshot the name + company on the appointment row alongside employeeId
+      // so the audit log keeps working even if the employee-API cache expires
+      // (it's an in-memory LRU with a 5-min TTL). The DTO serializer prefers
+      // the live cache lookup but falls back to these snapshot fields.
       input = {
         visitorType: 'employee',
         employeeId: employee.id,
+        visitor: {
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          company: employee.company || null,
+        },
         bossId,
         causeId,
         urgent,

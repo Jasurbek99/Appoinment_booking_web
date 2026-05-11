@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { api, ApiError } from '../lib/api.js';
+import { api, ApiError, setUnauthorizedHandler } from '../lib/api.js';
 
 const AuthContext = createContext(null);
 
@@ -26,6 +26,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Centralized 401 -> log out so the next render bounces to /login.
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   const login = useCallback(async (username, password) => {
     const me = await api.post('/api/auth/login', { username, password });

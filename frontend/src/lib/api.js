@@ -46,8 +46,20 @@ async function request(method, path, { body, query } = {}) {
 
   const res = await fetch(url, init);
   const parsed = await parseBody(res);
-  if (!res.ok) throw new ApiError(res.status, parsed);
+  if (!res.ok) {
+    const err = new ApiError(res.status, parsed);
+    // Centralized 401 handling: drop client auth state and bounce to /login.
+    if (res.status === 401 && _on401) _on401(err);
+    throw err;
+  }
   return parsed;
+}
+
+// AuthContext registers a handler here on mount so api.* can react to
+// 401s without taking a hard dependency on React state.
+let _on401 = null;
+export function setUnauthorizedHandler(fn) {
+  _on401 = fn;
 }
 
 export const api = {

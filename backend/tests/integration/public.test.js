@@ -3,19 +3,22 @@ import request from 'supertest';
 import sql from 'mssql';
 import { createApp } from '../../src/server.js';
 import { getPool, closePool } from '../../src/db/pool.js';
-import { createTestUser, loginAgent } from '../helpers/testUsers.js';
+import { createTestUser, loginAgent, withHistoryUnlocked } from '../helpers/testUsers.js';
 
 const SECRETARY = { id: 'u_pub_sec', username: 'sec_pub', role: 'secretary', password: 'test-pwd-1234' };
 
 let app;
 
-async function clear(pool) {
-  await pool.request().query(`
-    DELETE FROM appointment_history
-    WHERE appointment_id IN (
-      SELECT id FROM appointments WHERE visitor_last_name LIKE 'PB_%'
-    );
-  `);
+async function clear() {
+  await withHistoryUnlocked(async (pool) => {
+    await pool.request().query(`
+      DELETE FROM appointment_history
+      WHERE appointment_id IN (
+        SELECT id FROM appointments WHERE visitor_last_name LIKE 'PB_%'
+      );
+    `);
+  });
+  const pool = await getPool();
   await pool.request().query(`DELETE FROM appointments WHERE visitor_last_name LIKE 'PB_%'`);
 }
 
@@ -25,14 +28,14 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await clear();
   const pool = await getPool();
-  await clear(pool);
   await pool.request().query(`DELETE FROM users WHERE id = '${SECRETARY.id}'`);
   await closePool();
 });
 
 beforeEach(async () => {
-  await clear(await getPool());
+  await clear();
 });
 
 describe('GET /api/public/appointments', () => {

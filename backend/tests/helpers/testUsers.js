@@ -1,10 +1,24 @@
 // Shared helpers for integration tests: create / clean up DB users,
-// log in via supertest agent, etc.
+// log in via supertest agent, run cleanup queries that need to touch
+// appointment_history (the audit trigger forbids UPDATE/DELETE, so
+// cleanup must briefly disable it).
 
 import bcrypt from 'bcrypt';
 import sql from 'mssql';
 import { getPool } from '../../src/db/pool.js';
 import { config } from '../../src/config.js';
+
+// Run a SQL block with tr_history_no_modify disabled, then re-enable.
+// Use ONLY for test cleanup; production code should never touch this.
+export async function withHistoryUnlocked(fn) {
+  const pool = await getPool();
+  await pool.request().query('DISABLE TRIGGER tr_history_no_modify ON appointment_history');
+  try {
+    await fn(pool);
+  } finally {
+    await pool.request().query('ENABLE TRIGGER tr_history_no_modify ON appointment_history');
+  }
+}
 
 export async function createTestUser({
   id,

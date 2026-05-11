@@ -7,8 +7,9 @@ import { useAppointmentEvents } from '../contexts/SocketContext.jsx';
 import { useToast } from '../contexts/ToastProvider.jsx';
 
 const KEY = 'appointments';
+const ALWAYS = () => true;
 
-export function useLiveAppointments({ todayMatcher = () => true } = {}) {
+export function useLiveAppointments({ todayMatcher = ALWAYS } = {}) {
   const qc = useQueryClient();
   const { push } = useToast();
 

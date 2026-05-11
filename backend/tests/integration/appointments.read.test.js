@@ -3,7 +3,7 @@ import request from 'supertest';
 import sql from 'mssql';
 import { createApp } from '../../src/server.js';
 import { getPool, closePool } from '../../src/db/pool.js';
-import { createTestUser, loginAgent } from '../helpers/testUsers.js';
+import { createTestUser, loginAgent, withHistoryUnlocked } from '../helpers/testUsers.js';
 
 const SECRETARY = {
   id: 'u_aread_sec',
@@ -16,11 +16,14 @@ const BOSS2 = { id: 'u_aread_b2', username: 'b2_aread_test', role: 'boss2', pass
 
 let app;
 
-async function clearAppointments(pool) {
-  await pool.request().query(`
-    DELETE FROM appointment_history
-    WHERE appointment_id IN (SELECT id FROM appointments WHERE visitor_last_name LIKE 'AR_%');
-  `);
+async function clearAppointments(_pool) {
+  await withHistoryUnlocked(async (pool) => {
+    await pool.request().query(`
+      DELETE FROM appointment_history
+      WHERE appointment_id IN (SELECT id FROM appointments WHERE visitor_last_name LIKE 'AR_%');
+    `);
+  });
+  const pool = await getPool();
   await pool.request().query(`DELETE FROM appointments WHERE visitor_last_name LIKE 'AR_%'`);
 }
 
@@ -49,8 +52,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await clearAppointments();
   const pool = await getPool();
-  await clearAppointments(pool);
   await pool.request().query(
     `DELETE FROM users WHERE id IN ('${SECRETARY.id}','${BOSS1.id}','${BOSS2.id}')`,
   );
@@ -58,7 +61,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await clearAppointments(await getPool());
+  await clearAppointments();
 });
 
 describe('GET /api/appointments (carryover and scoping)', () => {

@@ -8,6 +8,7 @@ import { AppointmentCard } from '../components/AppointmentCard.jsx';
 import { RejectModal } from '../components/RejectModal.jsx';
 import { Empty } from '../components/primitives.jsx';
 import { BossAnalytics } from '../components/BossAnalytics.jsx';
+import { FutureList } from '../components/FutureList.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 
 const TABS = ['today', 'future', 'analytics'];
@@ -124,7 +125,7 @@ function Column({ title, items, role, onAction, busy }) {
 }
 
 function FutureStub() {
-  return <div className="text-stone-500 text-sm">Будущие — Шаг 9 (расширение).</div>;
+  return <FutureList />;
 }
 function AnalyticsStub() {
   return <BossAnalytics />;

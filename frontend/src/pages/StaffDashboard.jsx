@@ -5,6 +5,7 @@ import { NewAppointmentModal } from '../components/NewAppointmentModal.jsx';
 import { CausesSection } from '../components/CausesSection.jsx';
 import { UsersSection } from '../components/UsersSection.jsx';
 import { JournalTable } from '../components/JournalTable.jsx';
+import { FutureList } from '../components/FutureList.jsx';
 import { Btn } from '../components/primitives.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 
@@ -52,7 +53,7 @@ export function StaffDashboard() {
 }
 
 function FutureStub() {
-  return <div className="text-stone-500 text-sm">Будущие — Шаг 9 (расширение).</div>;
+  return <FutureList />;
 }
 function JournalStub() {
   return <JournalTable />;
