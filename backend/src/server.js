@@ -9,6 +9,7 @@ import { causesRouter } from './routes/causes.js';
 import { appointmentsRouter } from './routes/appointments.js';
 import { publicRouter } from './routes/public.js';
 import { employeesRouter } from './routes/employees.js';
+import { journalRouter } from './routes/journal.js';
 import { errorMiddleware } from './middleware/error.js';
 
 export function createApp() {
@@ -29,6 +30,7 @@ export function createApp() {
   app.use('/api/appointments', appointmentsRouter);
   app.use('/api/public', publicRouter);
   app.use('/api/employees', employeesRouter);
+  app.use('/api/journal', journalRouter);
 
   app.use(errorMiddleware);
   return app;

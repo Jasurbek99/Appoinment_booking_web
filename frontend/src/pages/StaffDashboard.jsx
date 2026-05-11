@@ -4,6 +4,7 @@ import { TodayList } from '../components/TodayList.jsx';
 import { NewAppointmentModal } from '../components/NewAppointmentModal.jsx';
 import { CausesSection } from '../components/CausesSection.jsx';
 import { UsersSection } from '../components/UsersSection.jsx';
+import { JournalTable } from '../components/JournalTable.jsx';
 import { Btn } from '../components/primitives.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 
@@ -54,7 +55,7 @@ function FutureStub() {
   return <div className="text-stone-500 text-sm">Будущие — Шаг 9 (расширение).</div>;
 }
 function JournalStub() {
-  return <div className="text-stone-500 text-sm">Журнал — Шаг 13.</div>;
+  return <JournalTable />;
 }
 function SettingsStub() {
   return (
