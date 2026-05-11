@@ -1,0 +1,265 @@
+import { useState, useMemo } from 'react';
+import { Modal, Btn, Input, Select, Empty, Badge } from './primitives.jsx';
+import { useEmployeeSearch } from '../hooks/useEmployees.js';
+import { useCauses } from '../hooks/useCauses.js';
+import { useCreateAppointment } from '../hooks/useAppointments.js';
+import { useToast } from '../contexts/ToastProvider.jsx';
+import { ApiError } from '../lib/api.js';
+import { todayLocalISO } from '../lib/format.js';
+
+const TABS = [
+  { id: 'employee', label: 'Сотрудник' },
+  { id: 'guest', label: 'Гость' },
+  { id: 'foreign', label: 'Иностранный гость' },
+];
+
+export function NewAppointmentModal({ open, onClose }) {
+  const [tab, setTab] = useState('employee');
+  const [employee, setEmployee] = useState(null);
+  const [manualMode, setManualMode] = useState(false);
+  const [first, setFirst] = useState('');
+  const [last, setLast] = useState('');
+  const [company, setCompany] = useState('');
+  const [bossId, setBossId] = useState('boss1');
+  const [causeId, setCauseId] = useState('work');
+  const [customCause, setCustomCause] = useState('');
+  const [urgent, setUrgent] = useState(false);
+  const [date, setDate] = useState(todayLocalISO());
+  const [duplicate, setDuplicate] = useState(null);
+
+  const { push } = useToast();
+  const { data: causes = [] } = useCauses();
+  const create = useCreateAppointment();
+
+  function reset() {
+    setTab('employee');
+    setEmployee(null);
+    setManualMode(false);
+    setFirst('');
+    setLast('');
+    setCompany('');
+    setBossId('boss1');
+    setCauseId('work');
+    setCustomCause('');
+    setUrgent(false);
+    setDate(todayLocalISO());
+    setDuplicate(null);
+  }
+
+  async function submit({ force = false } = {}) {
+    setDuplicate(null);
+    let input;
+    if (tab === 'employee' && employee && !manualMode) {
+      input = {
+        visitorType: 'employee',
+        employeeId: employee.id,
+        bossId,
+        causeId,
+        urgent,
+        date,
+        ...(causeId === 'other' ? { customCause } : {}),
+      };
+    } else {
+      input = {
+        visitorType: tab,
+        visitor: { firstName: first, lastName: last, company: company || null },
+        bossId,
+        causeId,
+        urgent,
+        date,
+        ...(causeId === 'other' ? { customCause } : {}),
+      };
+    }
+
+    try {
+      await create.mutateAsync({ input, force });
+      push({ kind: 'success', title: 'Заявка создана' });
+      reset();
+      onClose();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && err.body?.error === 'duplicate') {
+        setDuplicate(err.body.existing);
+        return;
+      }
+      push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' });
+    }
+  }
+
+  const canSubmit = useMemo(() => {
+    if (tab === 'employee' && employee && !manualMode) return true;
+    if (first.trim() && last.trim()) return true;
+    return false;
+  }, [tab, employee, manualMode, first, last]);
+
+  return (
+    <Modal
+      open={open}
+      onClose={() => {
+        reset();
+        onClose();
+      }}
+      title="Новая заявка"
+      size="lg"
+      footer={
+        <>
+          <Btn kind="ghost" onClick={() => { reset(); onClose(); }}>Отмена</Btn>
+          <Btn onClick={() => submit()} disabled={!canSubmit || create.isPending}>
+            Создать
+          </Btn>
+        </>
+      }
+    >
+      <div className="flex gap-1 mb-4 border-b border-stone-200">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => { setTab(t.id); setEmployee(null); setManualMode(t.id !== 'employee'); }}
+            className={
+              'px-3 py-2 text-sm border-b-2 ' +
+              (tab === t.id ? 'border-stone-900' : 'border-transparent text-stone-500 hover:text-stone-900')
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'employee' && !manualMode ? (
+        <EmployeePicker
+          selected={employee}
+          onSelect={setEmployee}
+          onManual={() => setManualMode(true)}
+        />
+      ) : (
+        <ManualEntry
+          first={first} setFirst={setFirst}
+          last={last} setLast={setLast}
+          company={company} setCompany={setCompany}
+          showBackToSearch={tab === 'employee'}
+          onBack={() => { setManualMode(false); }}
+        />
+      )}
+
+      <div className="grid grid-cols-2 gap-3 mt-4">
+        <div>
+          <label className="text-sm text-stone-600">Босс</label>
+          <Select value={bossId} onChange={(e) => setBossId(e.target.value)}>
+            <option value="boss1">Босс 1</option>
+            <option value="boss2">Босс 2</option>
+            <option value="boss3">Босс 3</option>
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm text-stone-600">Дата</label>
+          <Input type="date" value={date} min={todayLocalISO()} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-sm text-stone-600">Причина</label>
+          <Select value={causeId} onChange={(e) => setCauseId(e.target.value)}>
+            {causes.map((c) => (
+              <option key={c.id} value={c.id}>{c.label_ru}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex items-end">
+          <label className="text-sm flex items-center gap-2">
+            <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
+            Срочно
+          </label>
+        </div>
+        {causeId === 'other' && (
+          <div className="col-span-2">
+            <label className="text-sm text-stone-600">Опишите причину</label>
+            <Input value={customCause} onChange={(e) => setCustomCause(e.target.value)} />
+          </div>
+        )}
+      </div>
+
+      {duplicate && (
+        <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm">
+          У этого посетителя уже есть заявка на этот день (статус: {duplicate.status}). Создать ещё одну?
+          <div className="mt-2 flex gap-2 justify-end">
+            <Btn size="sm" kind="ghost" onClick={() => setDuplicate(null)}>Отмена</Btn>
+            <Btn size="sm" onClick={() => submit({ force: true })}>Всё равно создать</Btn>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function EmployeePicker({ selected, onSelect, onManual }) {
+  const [q, setQ] = useState('');
+  const { data, isFetching } = useEmployeeSearch(q);
+
+  return (
+    <div>
+      <Input
+        placeholder="Поиск по имени, фамилии или фирме"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        autoFocus
+      />
+      {data?.degraded && (
+        <div className="mt-2 text-xs text-stone-500">
+          Каталог недоступен — используйте «вписать вручную».
+        </div>
+      )}
+      <div className="mt-3 max-h-56 overflow-auto">
+        {(data?.results || []).length === 0 ? (
+          <Empty>{isFetching ? 'Поиск…' : q ? 'Ничего не найдено' : 'Введите запрос'}</Empty>
+        ) : (
+          <ul className="space-y-1">
+            {data.results.map((e) => (
+              <li key={e.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(e)}
+                  className={
+                    'w-full text-left rounded-xl border px-3 py-2 ' +
+                    (selected?.id === e.id ? 'border-stone-900 bg-stone-50' : 'border-stone-200 hover:bg-stone-50')
+                  }
+                >
+                  <div className="text-sm">{e.firstName} {e.lastName}</div>
+                  <div className="text-xs text-stone-500">{e.company}</div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {selected && (
+        <div className="mt-2 text-sm">
+          Выбрано: <Badge kind="info">{selected.firstName} {selected.lastName}</Badge>
+        </div>
+      )}
+      <div className="mt-3 text-right">
+        <Btn kind="ghost" size="sm" onClick={onManual}>Вписать вручную</Btn>
+      </div>
+    </div>
+  );
+}
+
+function ManualEntry({ first, setFirst, last, setLast, company, setCompany, showBackToSearch, onBack }) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <label className="text-sm text-stone-600">Имя</label>
+        <Input value={first} onChange={(e) => setFirst(e.target.value)} />
+      </div>
+      <div>
+        <label className="text-sm text-stone-600">Фамилия</label>
+        <Input value={last} onChange={(e) => setLast(e.target.value)} />
+      </div>
+      <div className="col-span-2">
+        <label className="text-sm text-stone-600">Фирма</label>
+        <Input value={company} onChange={(e) => setCompany(e.target.value)} />
+      </div>
+      {showBackToSearch && (
+        <div className="col-span-2 text-right">
+          <Btn kind="ghost" size="sm" onClick={onBack}>← Назад к поиску</Btn>
+        </div>
+      )}
+    </div>
+  );
+}

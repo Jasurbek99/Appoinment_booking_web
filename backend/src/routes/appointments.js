@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { listAppointments, loadFullDTO } from '../services/appointments.read.js';
 import * as writeSvc from '../services/appointments.write.js';
+import { lookupById as employeeLookup } from '../services/employees.js';
 import { createAppointmentSchema, rejectSchema } from '../schemas/appointments.js';
 import { requireAuth, requireStaff, BOSS_ROLES, STAFF_ROLES } from '../middleware/auth.js';
 import { ValidationError, NotFoundError, ForbiddenError } from '../lib/errors.js';
@@ -44,7 +45,7 @@ appointmentsRouter.get('/', async (req, res, next) => {
     }
 
     const opts = { mode, bossId, status: q.status, date: q.date };
-    const list = await listAppointments(opts);
+    const list = await listAppointments(opts, { employeeLookup });
     res.json(list);
   } catch (err) {
     next(err);
@@ -56,7 +57,7 @@ appointmentsRouter.post('/', requireStaff, async (req, res, next) => {
     const parse = createAppointmentSchema.safeParse(req.body);
     if (!parse.success) throw new ValidationError(parse.error.flatten());
     const force = req.query.force === 'true';
-    const dto = await writeSvc.create({ input: parse.data, actor: req.user, force });
+    const dto = await writeSvc.create({ input: parse.data, actor: req.user, force, employeeLookup });
     emitAppointmentEvent(req.app.get('io'), 'created', dto);
     res.status(201).json(dto);
   } catch (err) {
@@ -82,7 +83,7 @@ function transitionRoute(action, schema = null) {
         if (!parse.success) throw new ValidationError(parse.error.flatten().fieldErrors);
         note = parse.data.reason;
       }
-      const dto = await writeSvc.transition({ id, action, actor: req.user, note });
+      const dto = await writeSvc.transition({ id, action, actor: req.user, note, employeeLookup });
       emitAppointmentEvent(req.app.get('io'), ACTION_TO_EVENT[action], dto);
       res.json(dto);
     } catch (err) {

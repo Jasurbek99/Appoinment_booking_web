@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { TopBar } from '../components/TopBar.jsx';
 import { TodayList } from '../components/TodayList.jsx';
+import { NewAppointmentModal } from '../components/NewAppointmentModal.jsx';
+import { Btn } from '../components/primitives.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 
 const TABS = ['today', 'future', 'journal', 'settings'];
@@ -8,10 +10,16 @@ const TABS = ['today', 'future', 'journal', 'settings'];
 export function StaffDashboard() {
   const { t } = useI18n();
   const [tab, setTab] = useState('today');
+  const [newOpen, setNewOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col">
-      <TopBar />
+      <TopBar>
+        <div className="flex justify-end">
+          <Btn size="sm" onClick={() => setNewOpen(true)}>+ Новая заявка</Btn>
+        </div>
+      </TopBar>
+      <NewAppointmentModal open={newOpen} onClose={() => setNewOpen(false)} />
       <nav className="border-b border-stone-200 bg-white">
         <div className="max-w-6xl mx-auto px-4 flex gap-1">
           {TABS.map((id) => (

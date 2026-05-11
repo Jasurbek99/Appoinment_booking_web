@@ -8,6 +8,7 @@ import { usersRouter } from './routes/users.js';
 import { causesRouter } from './routes/causes.js';
 import { appointmentsRouter } from './routes/appointments.js';
 import { publicRouter } from './routes/public.js';
+import { employeesRouter } from './routes/employees.js';
 import { errorMiddleware } from './middleware/error.js';
 
 export function createApp() {
@@ -27,6 +28,7 @@ export function createApp() {
   app.use('/api/causes', causesRouter);
   app.use('/api/appointments', appointmentsRouter);
   app.use('/api/public', publicRouter);
+  app.use('/api/employees', employeesRouter);
 
   app.use(errorMiddleware);
   return app;
