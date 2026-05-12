@@ -1,6 +1,6 @@
 import { Btn, Badge, StatusBadge } from './primitives.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
-import { fmtTime, fmtDate, visitorName, visitorCompany, todayLocalISO } from '../lib/format.js';
+import { fmtTime, fmtDate, visitorName, visitorCompany, visitorPhone, todayLocalISO } from '../lib/format.js';
 
 export function AppointmentCard({ appt, role, onAction, busy }) {
   const { t, lang } = useI18n();
@@ -13,6 +13,11 @@ export function AppointmentCard({ appt, role, onAction, busy }) {
           <div className="font-medium truncate">{visitorName(appt)}</div>
           {visitorCompany(appt) && (
             <div className="text-xs text-stone-500 truncate">{visitorCompany(appt)}</div>
+          )}
+          {visitorPhone(appt) && (
+            <a href={`tel:${visitorPhone(appt)}`} className="text-xs text-stone-500 hover:text-stone-900">
+              ☎ {visitorPhone(appt)}
+            </a>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">

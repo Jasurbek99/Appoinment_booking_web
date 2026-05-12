@@ -7,7 +7,7 @@ import { toAppointmentDTO, toPublicAppointmentDTO } from './appointments.seriali
 
 const APPT_COLUMNS = `
   a.id, a.visitor_type, a.employee_id,
-  a.visitor_first_name, a.visitor_last_name, a.visitor_company,
+  a.visitor_first_name, a.visitor_last_name, a.visitor_company, a.visitor_phone,
   a.boss_id, a.cause_id, a.custom_cause, a.urgent,
   a.visit_date, a.status, a.rejection_reason, a.created_at
 `;

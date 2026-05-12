@@ -9,6 +9,7 @@ const visitorPerson = z.object({
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
   company: z.string().max(200).optional().nullable(),
+  phone: z.string().max(40).optional().nullable(),
 });
 
 export const createAppointmentSchema = z

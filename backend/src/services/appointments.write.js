@@ -93,6 +93,7 @@ export async function create({ input, actor, force = false, employeeLookup = nul
       .input('visitor_first_name', sql.NVarChar(100), input.visitor?.firstName ?? null)
       .input('visitor_last_name', sql.NVarChar(100), input.visitor?.lastName ?? null)
       .input('visitor_company', sql.NVarChar(200), input.visitor?.company ?? null)
+      .input('visitor_phone', sql.NVarChar(40), input.visitorType === 'foreign' ? null : input.visitor?.phone ?? null)
       .input('boss_id', sql.NVarChar(20), input.bossId)
       .input('cause_id', sql.NVarChar(50), input.causeId)
       .input('custom_cause', sql.NVarChar(500), input.causeId === 'other' ? input.customCause ?? null : null)
@@ -102,11 +103,11 @@ export async function create({ input, actor, force = false, employeeLookup = nul
 
     const result = await apptReq.query(`
       INSERT INTO appointments
-        (visitor_type, employee_id, visitor_first_name, visitor_last_name, visitor_company,
+        (visitor_type, employee_id, visitor_first_name, visitor_last_name, visitor_company, visitor_phone,
          boss_id, cause_id, custom_cause, urgent, visit_date, status)
       OUTPUT INSERTED.id
       VALUES
-        (@visitor_type, @employee_id, @visitor_first_name, @visitor_last_name, @visitor_company,
+        (@visitor_type, @employee_id, @visitor_first_name, @visitor_last_name, @visitor_company, @visitor_phone,
          @boss_id, @cause_id, @custom_cause, @urgent, @visit_date, @status)
     `);
     const id = result.recordset[0].id;

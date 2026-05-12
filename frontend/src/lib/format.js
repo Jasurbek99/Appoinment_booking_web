@@ -39,3 +39,7 @@ export function visitorName(appt) {
 export function visitorCompany(appt) {
   return appt.employee?.company || appt.visitor?.company || '';
 }
+
+export function visitorPhone(appt) {
+  return appt.visitor?.phone || '';
+}

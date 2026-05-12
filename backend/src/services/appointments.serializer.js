@@ -12,6 +12,7 @@ function visitorParts(row) {
     firstName: row.visitor_first_name,
     lastName: row.visitor_last_name,
     company: row.visitor_company,
+    phone: row.visitor_phone || null,
   };
 }
 
@@ -60,15 +61,18 @@ export function toAppointmentDTO(row, historyRows, employeeLookup = null) {
   };
 }
 
-// Public version. No user IDs. Only visible details a worker needs to see.
+// Public version. No user IDs, no phone (PII). Only visible details a worker needs to see.
 export function toPublicAppointmentDTO(row, historyRows, employeeLookup = null) {
   const employee = buildEmployee(row, employeeLookup);
-  const visitor =
+  const rawVisitor =
     row.visitor_type === 'employee'
       ? employee
         ? null
         : visitorParts(row)
       : visitorParts(row);
+  const visitor = rawVisitor
+    ? { firstName: rawVisitor.firstName, lastName: rawVisitor.lastName, company: rawVisitor.company }
+    : null;
 
   return {
     id: row.id,

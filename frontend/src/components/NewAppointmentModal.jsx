@@ -20,6 +20,7 @@ export function NewAppointmentModal({ open, onClose }) {
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [company, setCompany] = useState('');
+  const [phone, setPhone] = useState('');
   const [bossId, setBossId] = useState('boss1');
   const [causeId, setCauseId] = useState('work');
   const [customCause, setCustomCause] = useState('');
@@ -38,6 +39,7 @@ export function NewAppointmentModal({ open, onClose }) {
     setFirst('');
     setLast('');
     setCompany('');
+    setPhone('');
     setBossId('boss1');
     setCauseId('work');
     setCustomCause('');
@@ -48,6 +50,8 @@ export function NewAppointmentModal({ open, onClose }) {
 
   async function submit({ force = false } = {}) {
     setDuplicate(null);
+    // Phone is captured for employees/local guests only; foreign visitors skip it.
+    const phoneField = tab === 'foreign' ? null : phone.trim() || null;
     let input;
     if (tab === 'employee' && employee && !manualMode) {
       // Snapshot the name + company on the appointment row alongside employeeId
@@ -61,6 +65,7 @@ export function NewAppointmentModal({ open, onClose }) {
           firstName: employee.firstName,
           lastName: employee.lastName,
           company: employee.company || null,
+          phone: phoneField,
         },
         bossId,
         causeId,
@@ -71,7 +76,7 @@ export function NewAppointmentModal({ open, onClose }) {
     } else {
       input = {
         visitorType: tab,
-        visitor: { firstName: first, lastName: last, company: company || null },
+        visitor: { firstName: first, lastName: last, company: company || null, phone: phoneField },
         bossId,
         causeId,
         urgent,
@@ -176,6 +181,17 @@ export function NewAppointmentModal({ open, onClose }) {
             Срочно
           </label>
         </div>
+        {tab !== 'foreign' && (
+          <div className="col-span-2">
+            <label className="text-sm text-stone-600">Телефон (необязательно)</label>
+            <Input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+993 ..."
+            />
+          </div>
+        )}
         {causeId === 'other' && (
           <div className="col-span-2">
             <label className="text-sm text-stone-600">Опишите причину</label>
