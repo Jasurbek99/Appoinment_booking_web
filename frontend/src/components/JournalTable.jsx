@@ -13,16 +13,15 @@ const ACTIONS = [
   { id: 'complete', label: 'завершил' },
 ];
 
-export function JournalTable() {
+export function JournalTable({ hideUserFilter = false }) {
   const [filters, setFilters] = useState({});
-  const { data: users = [] } = useUsers();
   const { data = [], isLoading } = useJournal(filters);
 
   const setFilter = (k, v) => setFilters((f) => ({ ...f, [k]: v || undefined }));
 
   return (
     <section>
-      <header className="grid gap-3 md:grid-cols-4 mb-4">
+      <header className={'grid gap-3 mb-4 ' + (hideUserFilter ? 'md:grid-cols-3' : 'md:grid-cols-4')}>
         <Input
           type="date"
           value={filters.from || ''}
@@ -35,12 +34,7 @@ export function JournalTable() {
           onChange={(e) => setFilter('to', e.target.value)}
           placeholder="По"
         />
-        <Select value={filters.user_id || ''} onChange={(e) => setFilter('user_id', e.target.value)}>
-          <option value="">Все пользователи</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>{u.displayName}</option>
-          ))}
-        </Select>
+        {!hideUserFilter && <UserFilter value={filters.user_id || ''} onChange={(v) => setFilter('user_id', v)} />}
         <Select value={filters.action || ''} onChange={(e) => setFilter('action', e.target.value)}>
           {ACTIONS.map((a) => (
             <option key={a.id || 'all'} value={a.id}>{a.label}</option>
@@ -91,5 +85,17 @@ export function JournalTable() {
         </div>
       )}
     </section>
+  );
+}
+
+function UserFilter({ value, onChange }) {
+  const { data: users = [] } = useUsers();
+  return (
+    <Select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">Все пользователи</option>
+      {users.map((u) => (
+        <option key={u.id} value={u.id}>{u.displayName}</option>
+      ))}
+    </Select>
   );
 }

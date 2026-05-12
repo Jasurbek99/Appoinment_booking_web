@@ -6,10 +6,11 @@ import { CausesSection } from '../components/CausesSection.jsx';
 import { UsersSection } from '../components/UsersSection.jsx';
 import { JournalTable } from '../components/JournalTable.jsx';
 import { FutureList } from '../components/FutureList.jsx';
+import { VisitorFrequency } from '../components/VisitorFrequency.jsx';
 import { Btn } from '../components/primitives.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 
-const TABS = ['today', 'future', 'journal', 'settings'];
+const TABS = ['today', 'future', 'journal', 'visitors', 'settings'];
 
 export function StaffDashboard() {
   const { t } = useI18n();
@@ -46,6 +47,7 @@ export function StaffDashboard() {
         {tab === 'today' && <TodayList />}
         {tab === 'future' && <FutureStub />}
         {tab === 'journal' && <JournalStub />}
+        {tab === 'visitors' && <VisitorsStub />}
         {tab === 'settings' && <SettingsStub />}
       </main>
     </div>
@@ -57,6 +59,9 @@ function FutureStub() {
 }
 function JournalStub() {
   return <JournalTable />;
+}
+function VisitorsStub() {
+  return <VisitorFrequency showBossFilter />;
 }
 function SettingsStub() {
   return (

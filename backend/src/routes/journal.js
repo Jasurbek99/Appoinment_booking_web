@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import sql from 'mssql';
 import { getPool } from '../db/pool.js';
-import { requireAuth, requireStaff } from '../middleware/auth.js';
-import { ValidationError } from '../lib/errors.js';
+import { requireAuth, BOSS_ROLES, STAFF_ROLES } from '../middleware/auth.js';
+import { ValidationError, ForbiddenError } from '../lib/errors.js';
 
 export const journalRouter = Router();
 
@@ -16,14 +16,20 @@ const querySchema = z.object({
 
 const HARD_LIMIT = 500;
 
-journalRouter.get('/', requireAuth, requireStaff, async (req, res, next) => {
+journalRouter.get('/', requireAuth, async (req, res, next) => {
   try {
+    const isStaff = STAFF_ROLES.has(req.user.role);
+    const isBoss = BOSS_ROLES.has(req.user.role);
+    if (!isStaff && !isBoss) throw new ForbiddenError();
+
     const parse = querySchema.safeParse(req.query);
     if (!parse.success) throw new ValidationError(parse.error.flatten().fieldErrors);
     const q = parse.data;
 
     const from = q.from || daysAgoISO(7);
     const to = q.to || daysAheadISO(1);
+    // Bosses see only their own appointments' history.
+    const bossScope = isBoss ? req.user.role : null;
 
     const pool = await getPool();
     const r = await pool.request()
@@ -31,6 +37,7 @@ journalRouter.get('/', requireAuth, requireStaff, async (req, res, next) => {
       .input('to', sql.Date, to)
       .input('user_id', sql.NVarChar(50), q.user_id || null)
       .input('action', sql.NVarChar(20), q.action || null)
+      .input('boss_scope', sql.NVarChar(20), bossScope)
       .input('limit', sql.Int, HARD_LIMIT)
       .query(`
         SELECT TOP (@limit)
@@ -44,6 +51,7 @@ journalRouter.get('/', requireAuth, requireStaff, async (req, res, next) => {
         WHERE h.at >= @from AND h.at < DATEADD(day, 1, @to)
           AND (@user_id IS NULL OR h.user_id = @user_id)
           AND (@action  IS NULL OR h.action  = @action)
+          AND (@boss_scope IS NULL OR a.boss_id = @boss_scope)
         ORDER BY h.at DESC
       `);
 

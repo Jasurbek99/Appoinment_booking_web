@@ -9,6 +9,8 @@ import { RejectModal } from '../components/RejectModal.jsx';
 import { Empty } from '../components/primitives.jsx';
 import { BossAnalytics } from '../components/BossAnalytics.jsx';
 import { FutureList } from '../components/FutureList.jsx';
+import { JournalTable } from '../components/JournalTable.jsx';
+import { VisitorFrequency } from '../components/VisitorFrequency.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 
 const TABS = ['today', 'future', 'analytics'];
@@ -128,5 +130,22 @@ function FutureStub() {
   return <FutureList />;
 }
 function AnalyticsStub() {
-  return <BossAnalytics />;
+  const { t } = useI18n();
+  return (
+    <div className="space-y-8">
+      <BossAnalytics />
+      <section>
+        <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-3">
+          {t('visitorFrequency')}
+        </h2>
+        <VisitorFrequency />
+      </section>
+      <section>
+        <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-3">
+          {t('journal')}
+        </h2>
+        <JournalTable hideUserFilter />
+      </section>
+    </div>
+  );
 }

@@ -106,5 +106,17 @@
   "causesSection": "Причины приёма",
   "usersSection": "Учётные записи",
   "login": "Войти",
-  "logout": "Выйти"
+  "logout": "Выйти",
+  "visitors": "Посетители",
+  "visitor": "Посетитель",
+  "visitorFrequency": "Частота визитов",
+  "visits": "Визиты",
+  "lastVisit": "Последний визит",
+  "byBoss": "По боссам",
+  "type": "Тип",
+  "from": "С",
+  "to": "По",
+  "allTypes": "Все типы",
+  "allBosses": "Все боссы",
+  "noVisitors": "Записей нет"
 }

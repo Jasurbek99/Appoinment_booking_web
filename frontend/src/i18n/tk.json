@@ -107,5 +107,17 @@
   "causesSection": "Kabul sebäpleri",
   "usersSection": "Hasaplar",
   "login": "Girmek",
-  "logout": "Çykmak"
+  "logout": "Çykmak",
+  "visitors": "Myhmanlar",
+  "visitor": "Myhman",
+  "visitorFrequency": "Gelşi ýygylygy",
+  "visits": "Gelişler",
+  "lastVisit": "Soňky geliş",
+  "byBoss": "Başlyklar boýunça",
+  "type": "Görnüşi",
+  "from": "Başlangyç",
+  "to": "Soňy",
+  "allTypes": "Ähli görnüşler",
+  "allBosses": "Ähli başlyklar",
+  "noVisitors": "Ýazgylar ýok"
 }
