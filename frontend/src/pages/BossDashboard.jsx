@@ -1,12 +1,18 @@
 import { useState, useMemo } from 'react';
 import { TopBar } from '../components/TopBar.jsx';
-import { useAppointments, useTransitionAppointment } from '../hooks/useAppointments.js';
+import {
+  useAppointments,
+  useTransitionAppointment,
+  useBulkReschedule,
+} from '../hooks/useAppointments.js';
 import { useLiveAppointments } from '../hooks/useAppointmentEvents.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useToast } from '../contexts/ToastProvider.jsx';
 import { AppointmentCard } from '../components/AppointmentCard.jsx';
 import { RejectModal } from '../components/RejectModal.jsx';
-import { Empty } from '../components/primitives.jsx';
+import { RescheduleModal } from '../components/RescheduleModal.jsx';
+import { BulkRescheduleModal } from '../components/BulkRescheduleModal.jsx';
+import { Empty, Btn } from '../components/primitives.jsx';
 import { BossAnalytics } from '../components/BossAnalytics.jsx';
 import { FutureList } from '../components/FutureList.jsx';
 import { JournalTable } from '../components/JournalTable.jsx';
@@ -50,11 +56,16 @@ export function BossDashboard() {
 }
 
 function BossToday() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { push } = useToast();
   const { data, isLoading, error } = useAppointments({ mode: 'today' });
+  const { data: futureData } = useAppointments({ mode: 'future' });
   const transition = useTransitionAppointment();
+  const bulkReschedule = useBulkReschedule();
   const [rejectFor, setRejectFor] = useState(null);
+  const [rescheduleFor, setRescheduleFor] = useState(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
   useLiveAppointments();
 
   const { pending, queue } = useMemo(() => {
@@ -73,21 +84,64 @@ function BossToday() {
     };
   }, [data]);
 
+  // Affected count for bulk reschedule: approved/invited dated today or
+  // later. Excludes past-dated carryover, which the server won't move.
+  const affectedCount = useMemo(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayIso = `${yyyy}-${mm}-${dd}`;
+    const todayQueueOnDate = (data || []).filter(
+      (a) => (a.status === 'approved' || a.status === 'invited') && a.date >= todayIso,
+    );
+    const futureQueue = (futureData || []).filter(
+      (a) => a.status === 'approved' || a.status === 'invited',
+    );
+    return todayQueueOnDate.length + futureQueue.length;
+  }, [data, futureData]);
+
   if (isLoading) return <div className="text-stone-500 text-sm">…</div>;
   if (error) return <Empty>Не удалось загрузить</Empty>;
 
   const handleAction = (action, appt) => {
     if (action === 'reject') return setRejectFor(appt);
+    if (action === 'reschedule') return setRescheduleFor(appt);
     transition.mutate(
       { id: appt.id, action },
       { onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }) },
     );
   };
-  const submitReject = (reason) => {
+  const submitReject = ({ causeId, reason }) => {
     transition.mutate(
-      { id: rejectFor.id, action: 'reject', reason },
+      { id: rejectFor.id, action: 'reject', reason, causeId },
       {
         onSuccess: () => setRejectFor(null),
+        onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }),
+      },
+    );
+  };
+  const submitReschedule = ({ date, causeId, reason }) => {
+    transition.mutate(
+      { id: rescheduleFor.id, action: 'reschedule', date, causeId, reason },
+      {
+        onSuccess: () => setRescheduleFor(null),
+        onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }),
+      },
+    );
+  };
+  const submitBulkReschedule = ({ shiftDays, causeId, reason }) => {
+    bulkReschedule.mutate(
+      { shiftDays, causeId, reason },
+      {
+        onSuccess: (resp) => {
+          setBulkOpen(false);
+          const msg = (t('bulkRescheduleSuccess') || 'Перенесено приёмов: {count}').replace(
+            '{count}',
+            String(resp?.count ?? 0),
+          );
+          push({ kind: 'info', title: t('bulkReschedule') || 'Перенос', message: msg });
+        },
         onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }),
       },
     );
@@ -95,6 +149,17 @@ function BossToday() {
 
   return (
     <>
+      <div className="flex justify-end mb-4">
+        <Btn
+          kind="ghost"
+          size="sm"
+          onClick={() => setBulkOpen(true)}
+          disabled={affectedCount === 0 || bulkReschedule.isPending}
+        >
+          {t('bulkReschedule') || 'Перенести все'}
+          {affectedCount > 0 ? ` (${affectedCount})` : ''}
+        </Btn>
+      </div>
       <div className="grid gap-6 md:grid-cols-2">
         <Column title="Ожидают решения" items={pending} role={user.role} onAction={handleAction} busy={transition.isPending} />
         <Column title="Очередь / приглашения" items={queue} role={user.role} onAction={handleAction} busy={transition.isPending} />
@@ -104,6 +169,19 @@ function BossToday() {
         onClose={() => setRejectFor(null)}
         onConfirm={submitReject}
         busy={transition.isPending}
+      />
+      <RescheduleModal
+        open={!!rescheduleFor}
+        onClose={() => setRescheduleFor(null)}
+        onConfirm={submitReschedule}
+        busy={transition.isPending}
+      />
+      <BulkRescheduleModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        onConfirm={submitBulkReschedule}
+        busy={bulkReschedule.isPending}
+        queueCount={affectedCount}
       />
     </>
   );
@@ -136,15 +214,15 @@ function AnalyticsStub() {
       <BossAnalytics />
       <section>
         <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-3">
-          {t('visitorFrequency')}
-        </h2>
-        <VisitorFrequency />
-      </section>
-      <section>
-        <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-3">
           {t('journal')}
         </h2>
         <JournalTable hideUserFilter />
+      </section>
+      <section>
+        <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-3">
+          {t('visitorFrequency')}
+        </h2>
+        <VisitorFrequency />
       </section>
     </div>
   );

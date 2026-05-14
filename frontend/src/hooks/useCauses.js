@@ -3,10 +3,10 @@ import { api } from '../lib/api.js';
 
 const KEY = 'causes';
 
-export function useCauses() {
+export function useCauses({ kind } = {}) {
   return useQuery({
-    queryKey: [KEY],
-    queryFn: () => api.get('/api/causes'),
+    queryKey: [KEY, kind || 'all'],
+    queryFn: () => api.get('/api/causes', kind ? { query: { kind } } : undefined),
     staleTime: 60_000,
   });
 }

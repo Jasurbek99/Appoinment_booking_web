@@ -9,6 +9,7 @@ import sql from 'mssql';
 import { withTransaction } from '../db/tx.js';
 import { getPool } from '../db/pool.js';
 import { loadFullDTO } from './appointments.read.js';
+import { getById as getCauseById } from './causes.js';
 import {
   ConflictError,
   DuplicateError,
@@ -18,7 +19,7 @@ import {
 } from '../lib/errors.js';
 
 const ALLOWED_TRANSITIONS = {
-  pending: { approve: 'approved', reject: 'rejected' },
+  pending: { approve: 'approved', reject: 'rejected', reschedule: 'pending' },
   approved: { invite: 'invited', complete: 'completed' },
   invited: { complete: 'completed' },
   rejected: {}, // terminal
@@ -41,8 +42,24 @@ function clampDate(input) {
   return input < t ? t : input;
 }
 
+async function assertCauseKind(causeId, expectedKind) {
+  const cause = await getCauseById(causeId);
+  if (!cause) {
+    throw new ValidationError({ causeId: [`unknown cause '${causeId}'`] });
+  }
+  if (cause.kind !== expectedKind) {
+    throw new ValidationError({
+      causeId: [`cause '${causeId}' is of kind '${cause.kind}', expected '${expectedKind}'`],
+    });
+  }
+  return cause;
+}
+
 export async function create({ input, actor, force = false, employeeLookup = null }) {
   const visitDate = clampDate(input.date);
+
+  // The submitted causeId must be a visit-cause — never a reject/reschedule one.
+  await assertCauseKind(input.causeId, 'visit');
 
   // Duplicate detection per SPEC.md §12
   if (!force) {
@@ -125,17 +142,27 @@ export async function create({ input, actor, force = false, employeeLookup = nul
   return loadFullDTO(newId, { employeeLookup });
 }
 
-export async function transition({ id, action, actor, note, employeeLookup = null }) {
+export async function transition({ id, action, actor, note, causeId, newDate, employeeLookup = null }) {
+  // Kind checks happen BEFORE the transaction so a bad input fails fast.
+  if (action === 'reject' && causeId) {
+    await assertCauseKind(causeId, 'reject');
+  }
+  if (action === 'reschedule') {
+    if (!newDate) throw new ValidationError({ date: ['required for reschedule'] });
+    if (newDate < todayLocalISO()) throw new ValidationError({ date: ['cannot be in the past'] });
+    if (causeId) await assertCauseKind(causeId, 'reschedule');
+  }
+
   await withTransaction(async (tx) => {
     // Lock the row to serialize concurrent transitions.
     const cur = await new sql.Request(tx)
       .input('id', sql.Int, id)
-      .query(`SELECT id, status, boss_id FROM appointments WITH (UPDLOCK, ROWLOCK) WHERE id = @id`);
+      .query(`SELECT id, status, boss_id, visit_date FROM appointments WITH (UPDLOCK, ROWLOCK) WHERE id = @id`);
     if (cur.recordset.length === 0) throw new NotFoundError();
     const row = cur.recordset[0];
 
-    // Authorization: approve/reject/invite require own-boss; complete is broader.
-    if (action === 'approve' || action === 'reject' || action === 'invite') {
+    // Authorization: approve/reject/invite/reschedule require own-boss; complete is broader.
+    if (action === 'approve' || action === 'reject' || action === 'invite' || action === 'reschedule') {
       if (!BOSS_ROLES.has(actor.role)) throw new ForbiddenError();
       if (actor.role !== row.boss_id) throw new ForbiddenError();
     } else if (action === 'complete') {
@@ -157,17 +184,44 @@ export async function transition({ id, action, actor, note, employeeLookup = nul
 
     const updReq = new sql.Request(tx).input('id', sql.Int, id).input('next', sql.NVarChar(20), next);
     if (action === 'reject') {
-      updReq.input('reason', sql.NVarChar(500), note ?? null);
-      await updReq.query(`UPDATE appointments SET status = @next, rejection_reason = @reason WHERE id = @id`);
+      updReq
+        .input('reason', sql.NVarChar(500), note ?? null)
+        .input('cause_id', sql.NVarChar(50), causeId ?? null);
+      await updReq.query(
+        `UPDATE appointments
+            SET status = @next, rejection_reason = @reason, rejection_cause_id = @cause_id
+          WHERE id = @id`,
+      );
+    } else if (action === 'reschedule') {
+      updReq.input('visit_date', sql.Date, newDate);
+      await updReq.query(`UPDATE appointments SET visit_date = @visit_date WHERE id = @id`);
     } else {
       await updReq.query(`UPDATE appointments SET status = @next WHERE id = @id`);
+    }
+
+    // history.note: reject keeps free-text reason; reschedule packs metadata
+    // as JSON (oldDate/newDate/causeId/reason) so the full record survives
+    // even if a cause is deleted later.
+    let historyNote = null;
+    if (action === 'reject') {
+      historyNote = note ?? null;
+    } else if (action === 'reschedule') {
+      const oldDate = row.visit_date instanceof Date
+        ? row.visit_date.toISOString().slice(0, 10)
+        : String(row.visit_date).slice(0, 10);
+      historyNote = JSON.stringify({
+        oldDate,
+        newDate,
+        causeId: causeId ?? null,
+        reason: note ?? null,
+      });
     }
 
     await new sql.Request(tx)
       .input('id', sql.Int, id)
       .input('user_id', sql.NVarChar(50), actor.id)
       .input('action', sql.NVarChar(20), action)
-      .input('note', sql.NVarChar(500), action === 'reject' ? note ?? null : null)
+      .input('note', sql.NVarChar(500), historyNote)
       .query(
         `INSERT INTO appointment_history (appointment_id, action, user_id, note) VALUES (@id, @action, @user_id, @note)`,
       );
@@ -175,4 +229,82 @@ export async function transition({ id, action, actor, note, employeeLookup = nul
 
   // Re-load AFTER commit (also acts as a fresh read for the response).
   return loadFullDTO(id, { employeeLookup });
+}
+
+// Boss-only "clear my calendar" — shift every approved/invited appointment
+// dated today or later by N days. One transaction; one history row per moved
+// appointment with the same JSON note shape as single-item reschedule plus a
+// bulk:true marker so the journal can group them later.
+export async function bulkReschedule({
+  bossId,
+  shiftDays,
+  causeId,
+  reason,
+  actor,
+  employeeLookup = null,
+}) {
+  if (!BOSS_ROLES.has(bossId)) throw new ValidationError({ bossId: ['unknown boss'] });
+  if (actor.role !== bossId) throw new ForbiddenError();
+  if (causeId) await assertCauseKind(causeId, 'reschedule');
+
+  const today = todayLocalISO();
+
+  const movedIds = await withTransaction(async (tx) => {
+    const sel = await new sql.Request(tx)
+      .input('boss_id', sql.NVarChar(20), bossId)
+      .input('today', sql.Date, today)
+      .query(`
+        SELECT id, visit_date FROM appointments WITH (UPDLOCK, ROWLOCK)
+        WHERE boss_id = @boss_id
+          AND status IN ('approved','invited')
+          AND visit_date >= @today
+        ORDER BY id
+      `);
+
+    const ids = [];
+    for (const row of sel.recordset) {
+      const oldDate = row.visit_date instanceof Date
+        ? row.visit_date.toISOString().slice(0, 10)
+        : String(row.visit_date).slice(0, 10);
+
+      const upd = await new sql.Request(tx)
+        .input('id', sql.Int, row.id)
+        .input('shift', sql.Int, shiftDays)
+        .query(`
+          UPDATE appointments
+             SET visit_date = DATEADD(day, @shift, visit_date)
+           WHERE id = @id;
+          SELECT CONVERT(varchar(10), visit_date, 23) AS new_date
+            FROM appointments WHERE id = @id;
+        `);
+      const newDate = upd.recordset[0].new_date;
+
+      const note = JSON.stringify({
+        oldDate,
+        newDate,
+        causeId: causeId ?? null,
+        reason: reason ?? null,
+        bulk: true,
+      });
+
+      await new sql.Request(tx)
+        .input('id', sql.Int, row.id)
+        .input('user_id', sql.NVarChar(50), actor.id)
+        .input('note', sql.NVarChar(500), note)
+        .query(
+          `INSERT INTO appointment_history (appointment_id, action, user_id, note)
+           VALUES (@id, 'reschedule', @user_id, @note)`,
+        );
+
+      ids.push(row.id);
+    }
+    return ids;
+  });
+
+  const dtos = [];
+  for (const id of movedIds) {
+    const dto = await loadFullDTO(id, { employeeLookup });
+    if (dto) dtos.push(dto);
+  }
+  return dtos;
 }

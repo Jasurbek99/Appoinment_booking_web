@@ -1,10 +1,32 @@
 import { Btn, Badge, StatusBadge } from './primitives.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 import { fmtTime, fmtDate, visitorName, visitorCompany, visitorPhone, todayLocalISO } from '../lib/format.js';
+import { useCauses } from '../hooks/useCauses.js';
+import { useUsers } from '../hooks/useUsers.js';
 
 export function AppointmentCard({ appt, role, onAction, busy }) {
   const { t, lang } = useI18n();
   const isCarryover = appt.date < todayLocalISO() && (appt.status === 'approved' || appt.status === 'invited');
+  const isBossViewer = role === 'boss1' || role === 'boss2' || role === 'boss3';
+  const { data: rejectCauses = [] } = useCauses({ kind: 'reject' });
+  const rejectCause = appt.rejectionCauseId
+    ? rejectCauses.find((c) => c.id === appt.rejectionCauseId)
+    : null;
+  const rejectCauseLabel = rejectCause
+    ? (lang === 'tk' ? rejectCause.label_tk : rejectCause.label_ru)
+    : null;
+  const { data: visitCauses = [] } = useCauses({ kind: 'visit' });
+  const visitCause = appt.causeId && appt.causeId !== 'other'
+    ? visitCauses.find((c) => c.id === appt.causeId)
+    : null;
+  const visitCauseLabel = appt.causeId === 'other'
+    ? appt.customCause
+    : visitCause
+      ? (lang === 'tk' ? visitCause.label_tk : visitCause.label_ru)
+      : appt.causeId;
+  const { data: users = [] } = useUsers({ enabled: !isBossViewer });
+  const bossUser = users.find((u) => u.role === appt.bossId);
+  const bossLabel = bossUser ? `@${bossUser.username}` : appt.bossId;
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-4">
@@ -27,8 +49,8 @@ export function AppointmentCard({ appt, role, onAction, busy }) {
       </div>
 
       <div className="mt-3 text-xs text-stone-500 flex flex-wrap gap-x-4 gap-y-1">
-        <span>{appt.bossId}</span>
-        <span>{appt.causeId === 'other' ? appt.customCause : appt.causeId}</span>
+        {!isBossViewer && <span>{bossLabel}</span>}
+        <span>{visitCauseLabel}</span>
         <span>{fmtDate(appt.date, lang)}</span>
         {isCarryover && <Badge kind="warning">↻ перенесено</Badge>}
         {appt.history?.length > 0 && (
@@ -36,9 +58,10 @@ export function AppointmentCard({ appt, role, onAction, busy }) {
         )}
       </div>
 
-      {appt.rejectionReason && (
+      {(rejectCauseLabel || appt.rejectionReason) && (
         <div className="mt-2 text-sm text-rose-700 bg-rose-50 rounded-xl px-3 py-2">
-          {appt.rejectionReason}
+          {rejectCauseLabel && <div className="font-medium">{rejectCauseLabel}</div>}
+          {appt.rejectionReason && <div>{appt.rejectionReason}</div>}
         </div>
       )}
 
@@ -60,6 +83,9 @@ function Actions({ appt, role, onAction, busy }) {
       </Btn>,
       <Btn key="reject" size="sm" kind="danger" onClick={() => onAction('reject', appt)} disabled={busy}>
         {t('reject') || 'Отклонить'}
+      </Btn>,
+      <Btn key="reschedule" size="sm" kind="info" onClick={() => onAction('reschedule', appt)} disabled={busy}>
+        {t('reschedule') || 'Перенести'}
       </Btn>,
     );
   }

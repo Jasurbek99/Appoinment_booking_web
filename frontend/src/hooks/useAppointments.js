@@ -19,11 +19,32 @@ export function useCreateAppointment() {
   });
 }
 
+export function useBulkReschedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ shiftDays, causeId, reason }) => {
+      const body = { shiftDays };
+      if (causeId) body.causeId = causeId;
+      if (reason) body.reason = reason;
+      return api.post('/api/appointments/bulk-reschedule', body);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
 export function useTransitionAppointment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, action, reason }) => {
-      const body = action === 'reject' && reason ? { reason } : {};
+    mutationFn: ({ id, action, reason, causeId, date }) => {
+      const body = {};
+      if (action === 'reject') {
+        if (reason) body.reason = reason;
+        if (causeId) body.causeId = causeId;
+      } else if (action === 'reschedule') {
+        body.date = date;
+        if (reason) body.reason = reason;
+        if (causeId) body.causeId = causeId;
+      }
       return api.patch(`/api/appointments/${id}/${action}`, body);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),

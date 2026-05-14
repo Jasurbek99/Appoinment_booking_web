@@ -27,6 +27,7 @@ export function useLiveAppointments({ todayMatcher = ALWAYS } = {}) {
         maybeFireBrowserNotification(dto);
       },
       completed: (dto) => applyToCache(qc, dto, todayMatcher),
+      rescheduled: (dto) => applyToCache(qc, dto, todayMatcher),
     }),
     [qc, todayMatcher, push],
   );

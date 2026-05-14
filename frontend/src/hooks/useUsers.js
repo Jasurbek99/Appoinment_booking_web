@@ -3,8 +3,8 @@ import { api } from '../lib/api.js';
 
 const KEY = 'users';
 
-export function useUsers() {
-  return useQuery({ queryKey: [KEY], queryFn: () => api.get('/api/users') });
+export function useUsers({ enabled = true } = {}) {
+  return useQuery({ queryKey: [KEY], queryFn: () => api.get('/api/users'), enabled });
 }
 
 export function useCreateUser() {

@@ -7,9 +7,10 @@ import { ValidationError } from '../lib/errors.js';
 export const causesRouter = Router();
 
 // GET is public per SPEC.md §6 — used by the worker public page form, etc.
-causesRouter.get('/', async (_req, res, next) => {
+causesRouter.get('/', async (req, res, next) => {
   try {
-    res.json(await causes.list());
+    const kind = typeof req.query.kind === 'string' ? req.query.kind : undefined;
+    res.json(await causes.list({ kind }));
   } catch (err) {
     next(err);
   }

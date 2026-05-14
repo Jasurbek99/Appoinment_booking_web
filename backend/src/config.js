@@ -16,8 +16,11 @@ const schema = z.object({
 
   INITIAL_SECRETARY_PASSWORD: z.string().optional(),
 
-  EMPLOYEE_API_URL: z.string().url().optional().or(z.literal('')),
-  EMPLOYEE_API_KEY: z.string().optional(),
+  EMPLOYEE_DB_SERVER: z.string().min(1),
+  EMPLOYEE_DB_PORT: z.coerce.number().int().positive().default(1433),
+  EMPLOYEE_DB_NAME: z.string().min(1),
+  EMPLOYEE_DB_USER: z.string().min(1),
+  EMPLOYEE_DB_PASSWORD: z.string().min(1),
 
   CORS_ORIGIN: z.string().min(1).default('http://localhost:5173'),
 });
@@ -48,9 +51,12 @@ export const config = {
     password: env.DB_PASSWORD,
   },
   initialSecretaryPassword: env.INITIAL_SECRETARY_PASSWORD,
-  employeeApi: {
-    url: env.EMPLOYEE_API_URL || null,
-    key: env.EMPLOYEE_API_KEY || null,
+  employeeDb: {
+    server: env.EMPLOYEE_DB_SERVER,
+    port: env.EMPLOYEE_DB_PORT,
+    database: env.EMPLOYEE_DB_NAME,
+    user: env.EMPLOYEE_DB_USER,
+    password: env.EMPLOYEE_DB_PASSWORD,
   },
   corsOrigin: env.CORS_ORIGIN,
   isProduction: env.NODE_ENV === 'production',

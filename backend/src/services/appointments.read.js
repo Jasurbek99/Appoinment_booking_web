@@ -9,7 +9,7 @@ const APPT_COLUMNS = `
   a.id, a.visitor_type, a.employee_id,
   a.visitor_first_name, a.visitor_last_name, a.visitor_company, a.visitor_phone,
   a.boss_id, a.cause_id, a.custom_cause, a.urgent,
-  a.visit_date, a.status, a.rejection_reason, a.created_at
+  a.visit_date, a.status, a.rejection_reason, a.rejection_cause_id, a.created_at
 `;
 
 const HIST_COLUMNS = `
@@ -33,7 +33,7 @@ function buildWhere({ mode, bossId, status, date, lastName }) {
     inputs.push({ name: 'date', type: sql.Date, value: date });
   } else if (mode === 'public') {
     clauses.push(
-      `a.visitor_last_name = @lastName AND a.visit_date >= DATEADD(day, -30, CAST(GETDATE() AS DATE))`,
+      `a.visitor_last_name LIKE @lastName + '%' AND a.visit_date >= DATEADD(day, -30, CAST(GETDATE() AS DATE))`,
     );
     inputs.push({ name: 'lastName', type: sql.NVarChar(100), value: lastName });
   } else if (mode === 'all') {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useVisitorStats } from '../hooks/useVisitorStats.js';
 import { Input, Select, Empty } from './primitives.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
+import { fmtDate } from '../lib/format.js';
 
 const TYPES = [
   { id: '', key: 'allTypes' },
@@ -104,7 +105,7 @@ export function VisitorFrequency({ showBossFilter = false }) {
                   <td className="px-3 py-2 text-right font-semibold">{r.visits}</td>
                   <td className="px-3 py-2 text-right text-stone-500">{r.completed}</td>
                   <td className="px-3 py-2 text-stone-500 whitespace-nowrap">
-                    {new Date(r.lastVisit).toLocaleDateString('ru-RU')}
+                    {fmtDate(r.lastVisit)}
                   </td>
                   {!data?.bossScope && r.byBoss && (
                     <td className="px-3 py-2 text-stone-500 whitespace-nowrap">

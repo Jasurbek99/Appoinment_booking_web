@@ -15,7 +15,7 @@ async function ensureDatabase() {
     database: 'master',
     user: config.db.user,
     password: config.db.password,
-    options: { encrypt: true, trustServerCertificate: true },
+    options: { encrypt: false, trustServerCertificate: true },
   }).connect();
   try {
     const safeName = config.db.database.replace(/]/g, ']]');
@@ -94,7 +94,7 @@ async function main() {
     database: config.db.database,
     user: config.db.user,
     password: config.db.password,
-    options: { encrypt: true, trustServerCertificate: true },
+    options: { encrypt: false, trustServerCertificate: true },
   }).connect();
 
   try {

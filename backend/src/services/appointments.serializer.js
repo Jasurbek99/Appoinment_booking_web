@@ -46,6 +46,7 @@ export function toAppointmentDTO(row, historyRows, employeeLookup = null) {
     date: formatDate(row.visit_date),
     status: row.status,
     rejectionReason: row.rejection_reason,
+    rejectionCauseId: row.rejection_cause_id || null,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
     history: (historyRows || []).map((h) => ({
       action: h.action,

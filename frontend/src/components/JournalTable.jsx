@@ -2,16 +2,33 @@ import { useState } from 'react';
 import { useJournal } from '../hooks/useJournal.js';
 import { useUsers } from '../hooks/useUsers.js';
 import { Input, Select, Empty } from './primitives.jsx';
-import { fmtTime } from '../lib/format.js';
+import { fmtTime, fmtDate } from '../lib/format.js';
 
 const ACTIONS = [
   { id: '', label: 'Все действия' },
   { id: 'create', label: 'создал заявку' },
   { id: 'approve', label: 'одобрил' },
   { id: 'reject', label: 'отклонил' },
+  { id: 'reschedule', label: 'перенёс' },
   { id: 'invite', label: 'пригласил' },
   { id: 'complete', label: 'завершил' },
 ];
+
+function formatNote(action, note) {
+  if (!note) return null;
+  if (action === 'reschedule') {
+    try {
+      const j = JSON.parse(note);
+      const parts = [];
+      if (j.oldDate && j.newDate) parts.push(`${j.oldDate} → ${j.newDate}`);
+      if (j.reason) parts.push(j.reason);
+      return parts.join(' · ') || null;
+    } catch {
+      return note;
+    }
+  }
+  return note;
+}
 
 export function JournalTable({ hideUserFilter = false }) {
   const [filters, setFilters] = useState({});
@@ -61,7 +78,7 @@ export function JournalTable({ hideUserFilter = false }) {
               {data.map((row) => (
                 <tr key={row.id}>
                   <td className="px-3 py-2 whitespace-nowrap text-stone-500">
-                    {new Date(row.at).toLocaleDateString('ru-RU')} {fmtTime(row.at)}
+                    {fmtDate(row.at)} {fmtTime(row.at)}
                   </td>
                   <td className="px-3 py-2">
                     {row.user.displayName || row.user.id}
@@ -69,7 +86,10 @@ export function JournalTable({ hideUserFilter = false }) {
                   </td>
                   <td className="px-3 py-2">
                     {ACTIONS.find((a) => a.id === row.action)?.label || row.action}
-                    {row.note && <div className="text-xs text-stone-500">{row.note}</div>}
+                    {(() => {
+                      const formatted = formatNote(row.action, row.note);
+                      return formatted ? <div className="text-xs text-stone-500">{formatted}</div> : null;
+                    })()}
                   </td>
                   <td className="px-3 py-2 text-stone-500">#{row.appointment.id}</td>
                   <td className="px-3 py-2">

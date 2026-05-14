@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Modal, Btn, Input, Select, Empty, Badge } from './primitives.jsx';
-import { useEmployeeSearch } from '../hooks/useEmployees.js';
+import { useEmployeeSearch, useFirms } from '../hooks/useEmployees.js';
 import { useCauses } from '../hooks/useCauses.js';
 import { useCreateAppointment } from '../hooks/useAppointments.js';
 import { useToast } from '../contexts/ToastProvider.jsx';
@@ -29,7 +29,7 @@ export function NewAppointmentModal({ open, onClose }) {
   const [duplicate, setDuplicate] = useState(null);
 
   const { push } = useToast();
-  const { data: causes = [] } = useCauses();
+  const { data: causes = [] } = useCauses({ kind: 'visit' });
   const create = useCreateAppointment();
 
   function reset() {
@@ -215,16 +215,36 @@ export function NewAppointmentModal({ open, onClose }) {
 
 function EmployeePicker({ selected, onSelect, onManual }) {
   const [q, setQ] = useState('');
-  const { data, isFetching } = useEmployeeSearch(q);
+  const [firm, setFirm] = useState('');
+  const { data: firmsData } = useFirms();
+  const { data, isFetching } = useEmployeeSearch(q, firm);
+
+  const firms = firmsData?.firms || [];
+  const placeholder = firm
+    ? 'Поиск по имени или фамилии'
+    : 'Поиск по имени, фамилии или фирме';
+  const emptyHint = q || firm ? 'Ничего не найдено' : 'Введите запрос или выберите фирму';
 
   return (
     <div>
-      <Input
-        placeholder="Поиск по имени, фамилии или фирме"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        autoFocus
-      />
+      <div className="flex gap-2">
+        <div className="w-44 shrink-0">
+          <Select value={firm} onChange={(e) => setFirm(e.target.value)}>
+            <option value="">Все фирмы</option>
+            {firms.map((f) => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex-1">
+          <Input
+            placeholder={placeholder}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            autoFocus
+          />
+        </div>
+      </div>
       {data?.degraded && (
         <div className="mt-2 text-xs text-stone-500">
           Каталог недоступен — используйте «вписать вручную».
@@ -232,7 +252,7 @@ function EmployeePicker({ selected, onSelect, onManual }) {
       )}
       <div className="mt-3 max-h-56 overflow-auto">
         {(data?.results || []).length === 0 ? (
-          <Empty>{isFetching ? 'Поиск…' : q ? 'Ничего не найдено' : 'Введите запрос'}</Empty>
+          <Empty>{isFetching ? 'Поиск…' : emptyHint}</Empty>
         ) : (
           <ul className="space-y-1">
             {data.results.map((e) => (

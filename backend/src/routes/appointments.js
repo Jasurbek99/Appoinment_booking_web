@@ -3,8 +3,13 @@ import { z } from 'zod';
 import { listAppointments, loadFullDTO } from '../services/appointments.read.js';
 import * as writeSvc from '../services/appointments.write.js';
 import { lookupById as employeeLookup } from '../services/employees.js';
-import { createAppointmentSchema, rejectSchema } from '../schemas/appointments.js';
-import { requireAuth, requireStaff, BOSS_ROLES, STAFF_ROLES } from '../middleware/auth.js';
+import {
+  createAppointmentSchema,
+  rejectSchema,
+  rescheduleSchema,
+  bulkRescheduleSchema,
+} from '../schemas/appointments.js';
+import { requireAuth, requireStaff, requireBoss, BOSS_ROLES, STAFF_ROLES } from '../middleware/auth.js';
 import { ValidationError, NotFoundError, ForbiddenError } from '../lib/errors.js';
 import { emitAppointmentEvent } from '../sockets/emit.js';
 
@@ -70,6 +75,7 @@ const ACTION_TO_EVENT = {
   reject: 'rejected',
   invite: 'invited',
   complete: 'completed',
+  reschedule: 'rescheduled',
 };
 
 function transitionRoute(action, schema = null) {
@@ -77,13 +83,15 @@ function transitionRoute(action, schema = null) {
     try {
       const id = Number(req.params.id);
       if (!Number.isInteger(id) || id < 1) throw new ValidationError({ id: ['must be integer'] });
-      let note;
+      const args = { id, action, actor: req.user, employeeLookup };
       if (schema) {
         const parse = schema.safeParse(req.body || {});
         if (!parse.success) throw new ValidationError(parse.error.flatten().fieldErrors);
-        note = parse.data.reason;
+        args.note = parse.data.reason;
+        args.causeId = parse.data.causeId;
+        if (action === 'reschedule') args.newDate = parse.data.date;
       }
-      const dto = await writeSvc.transition({ id, action, actor: req.user, note, employeeLookup });
+      const dto = await writeSvc.transition(args);
       emitAppointmentEvent(req.app.get('io'), ACTION_TO_EVENT[action], dto);
       res.json(dto);
     } catch (err) {
@@ -92,10 +100,32 @@ function transitionRoute(action, schema = null) {
   };
 }
 
+appointmentsRouter.post('/bulk-reschedule', requireBoss, async (req, res, next) => {
+  try {
+    const parse = bulkRescheduleSchema.safeParse(req.body || {});
+    if (!parse.success) throw new ValidationError(parse.error.flatten().fieldErrors);
+    const { shiftDays, causeId, reason } = parse.data;
+    const dtos = await writeSvc.bulkReschedule({
+      bossId: req.user.role,
+      shiftDays,
+      causeId,
+      reason,
+      actor: req.user,
+      employeeLookup,
+    });
+    const io = req.app.get('io');
+    for (const dto of dtos) emitAppointmentEvent(io, 'rescheduled', dto);
+    res.json({ count: dtos.length, ids: dtos.map((d) => d.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 appointmentsRouter.patch('/:id/approve', transitionRoute('approve'));
 appointmentsRouter.patch('/:id/reject', transitionRoute('reject', rejectSchema));
 appointmentsRouter.patch('/:id/invite', transitionRoute('invite'));
 appointmentsRouter.patch('/:id/complete', transitionRoute('complete'));
+appointmentsRouter.patch('/:id/reschedule', transitionRoute('reschedule', rescheduleSchema));
 
 appointmentsRouter.get('/:id/history', async (req, res, next) => {
   try {

@@ -15,15 +15,26 @@ export function fmtTime(iso, lang = 'ru') {
 
 export function fmtDate(yyyymmdd, lang = 'ru') {
   if (!yyyymmdd) return '';
-  const d = new Date(yyyymmdd + 'T00:00:00');
-  return d.toLocaleDateString(lang === 'tk' ? 'en-GB' : 'ru-RU', {
-    day: 'numeric',
-    month: 'short',
-  });
+  const d = typeof yyyymmdd === 'string' && yyyymmdd.length === 10
+    ? new Date(yyyymmdd + 'T00:00:00')
+    : new Date(yyyymmdd);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 export function todayLocalISO() {
   const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+export function tomorrowLocalISO() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
