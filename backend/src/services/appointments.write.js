@@ -248,15 +248,17 @@ export async function bulkReschedule({
   if (causeId) await assertCauseKind(causeId, 'reschedule');
 
   const movedIds = await withTransaction(async (tx) => {
-    // Includes carryover (past-dated approved/invited) so the boss can clear
-    // their whole queue in one shot. Carryover gets clamped to today before
-    // the shift is applied, so no shifted row lands in the past.
+    // Pending is included too — if the boss is away, no one can decide on
+    // those, and the visitor would still arrive on the original date.
+    // Carryover (past-dated) is also included; the UPDATE clamps any
+    // past visit_date to today before applying the shift so no moved row
+    // lands in the past.
     const sel = await new sql.Request(tx)
       .input('boss_id', sql.NVarChar(20), bossId)
       .query(`
         SELECT id, visit_date FROM appointments WITH (UPDLOCK, ROWLOCK)
         WHERE boss_id = @boss_id
-          AND status IN ('approved','invited')
+          AND status IN ('pending','approved','invited')
         ORDER BY id
       `);
 

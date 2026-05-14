@@ -84,17 +84,15 @@ function BossToday() {
     };
   }, [data]);
 
-  // Affected count for bulk reschedule: every approved/invited row the
-  // boss owns, today + carryover (from today's list) plus future.
-  // Carryover is included because the server clamps past dates to today
-  // before shifting, so the boss can clear stale items in one click.
+  // Affected count for bulk reschedule: every pending/approved/invited row
+  // the boss owns — today + carryover (from today's list) plus future.
+  // Pending counts because the boss can't decide on them while away;
+  // carryover counts because the server clamps past dates to today
+  // before shifting.
   const affectedCount = useMemo(() => {
-    const todayQueue = (data || []).filter(
-      (a) => a.status === 'approved' || a.status === 'invited',
-    );
-    const futureQueue = (futureData || []).filter(
-      (a) => a.status === 'approved' || a.status === 'invited',
-    );
+    const isActive = (a) => a.status === 'pending' || a.status === 'approved' || a.status === 'invited';
+    const todayQueue = (data || []).filter(isActive);
+    const futureQueue = (futureData || []).filter(isActive);
     return todayQueue.length + futureQueue.length;
   }, [data, futureData]);
 
