@@ -26,7 +26,7 @@ export function AppointmentCard({ appt, role, onAction, busy }) {
       : appt.causeId;
   const { data: users = [] } = useUsers({ enabled: !isBossViewer });
   const bossUser = users.find((u) => u.role === appt.bossId);
-  const bossLabel = bossUser ? `@${bossUser.username}` : appt.bossId;
+  const bossLabel = bossUser ? bossUser.displayName : appt.bossId;
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-4">
@@ -43,7 +43,7 @@ export function AppointmentCard({ appt, role, onAction, busy }) {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {appt.urgent && <Badge kind="danger">{t('urgent') || 'Срочно'}</Badge>}
+          {appt.urgent && <Badge kind="danger">{t('urgent')}</Badge>}
           <StatusBadge status={appt.status} label={t(appt.status)} />
         </div>
       </div>
@@ -52,9 +52,9 @@ export function AppointmentCard({ appt, role, onAction, busy }) {
         {!isBossViewer && <span>{bossLabel}</span>}
         <span>{visitCauseLabel}</span>
         <span>{fmtDate(appt.date, lang)}</span>
-        {isCarryover && <Badge kind="warning">↻ перенесено</Badge>}
+        {isCarryover && <Badge kind="warning">↻ {t('carryoverBadge')}</Badge>}
         {appt.history?.length > 0 && (
-          <span>создано {fmtTime(appt.history[0].at, lang)}</span>
+          <span>{t('createdAt')} {fmtTime(appt.history[0].at, lang)}</span>
         )}
       </div>
 
@@ -79,27 +79,27 @@ function Actions({ appt, role, onAction, busy }) {
   if (appt.status === 'pending' && isOwnBoss) {
     buttons.push(
       <Btn key="approve" size="sm" kind="success" onClick={() => onAction('approve', appt)} disabled={busy}>
-        {t('approve') || 'Одобрить'}
+        {t('approve')}
       </Btn>,
       <Btn key="reject" size="sm" kind="danger" onClick={() => onAction('reject', appt)} disabled={busy}>
-        {t('reject') || 'Отклонить'}
+        {t('reject')}
       </Btn>,
       <Btn key="reschedule" size="sm" kind="info" onClick={() => onAction('reschedule', appt)} disabled={busy}>
-        {t('reschedule') || 'Перенести'}
+        {t('reschedule')}
       </Btn>,
     );
   }
   if (appt.status === 'approved' && isOwnBoss) {
     buttons.push(
       <Btn key="invite" size="sm" kind="info" onClick={() => onAction('invite', appt)} disabled={busy}>
-        {t('invite') || 'Пригласить'}
+        {t('invite')}
       </Btn>,
     );
   }
   if ((appt.status === 'approved' || appt.status === 'invited') && (isStaff || isOwnBoss)) {
     buttons.push(
       <Btn key="complete" size="sm" kind="ghost" onClick={() => onAction('complete', appt)} disabled={busy}>
-        {t('complete') || 'Завершить'}
+        {t('complete')}
       </Btn>,
     );
   }
