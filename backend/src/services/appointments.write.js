@@ -247,17 +247,16 @@ export async function bulkReschedule({
   if (actor.role !== bossId) throw new ForbiddenError();
   if (causeId) await assertCauseKind(causeId, 'reschedule');
 
-  const today = todayLocalISO();
-
   const movedIds = await withTransaction(async (tx) => {
+    // Includes carryover (past-dated approved/invited) so the boss can clear
+    // their whole queue in one shot. Carryover gets clamped to today before
+    // the shift is applied, so no shifted row lands in the past.
     const sel = await new sql.Request(tx)
       .input('boss_id', sql.NVarChar(20), bossId)
-      .input('today', sql.Date, today)
       .query(`
         SELECT id, visit_date FROM appointments WITH (UPDLOCK, ROWLOCK)
         WHERE boss_id = @boss_id
           AND status IN ('approved','invited')
-          AND visit_date >= @today
         ORDER BY id
       `);
 
@@ -272,7 +271,12 @@ export async function bulkReschedule({
         .input('shift', sql.Int, shiftDays)
         .query(`
           UPDATE appointments
-             SET visit_date = DATEADD(day, @shift, visit_date)
+             SET visit_date = DATEADD(
+               day, @shift,
+               CASE WHEN visit_date < CAST(GETDATE() AS DATE)
+                    THEN CAST(GETDATE() AS DATE)
+                    ELSE visit_date END
+             )
            WHERE id = @id;
           SELECT CONVERT(varchar(10), visit_date, 23) AS new_date
             FROM appointments WHERE id = @id;

@@ -84,32 +84,29 @@ function BossToday() {
     };
   }, [data]);
 
-  // Affected count for bulk reschedule: approved/invited dated today or
-  // later. Excludes past-dated carryover, which the server won't move.
+  // Affected count for bulk reschedule: every approved/invited row the
+  // boss owns, today + carryover (from today's list) plus future.
+  // Carryover is included because the server clamps past dates to today
+  // before shifting, so the boss can clear stale items in one click.
   const affectedCount = useMemo(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayIso = `${yyyy}-${mm}-${dd}`;
-    const todayQueueOnDate = (data || []).filter(
-      (a) => (a.status === 'approved' || a.status === 'invited') && a.date >= todayIso,
+    const todayQueue = (data || []).filter(
+      (a) => a.status === 'approved' || a.status === 'invited',
     );
     const futureQueue = (futureData || []).filter(
       (a) => a.status === 'approved' || a.status === 'invited',
     );
-    return todayQueueOnDate.length + futureQueue.length;
+    return todayQueue.length + futureQueue.length;
   }, [data, futureData]);
 
   if (isLoading) return <div className="text-stone-500 text-sm">…</div>;
-  if (error) return <Empty>Не удалось загрузить</Empty>;
+  if (error) return <Empty>{t('loadFailed')}</Empty>;
 
   const handleAction = (action, appt) => {
     if (action === 'reject') return setRejectFor(appt);
     if (action === 'reschedule') return setRescheduleFor(appt);
     transition.mutate(
       { id: appt.id, action },
-      { onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }) },
+      { onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }) },
     );
   };
   const submitReject = ({ causeId, reason }) => {
@@ -117,7 +114,7 @@ function BossToday() {
       { id: rejectFor.id, action: 'reject', reason, causeId },
       {
         onSuccess: () => setRejectFor(null),
-        onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }),
+        onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
       },
     );
   };
@@ -126,7 +123,7 @@ function BossToday() {
       { id: rescheduleFor.id, action: 'reschedule', date, causeId, reason },
       {
         onSuccess: () => setRescheduleFor(null),
-        onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }),
+        onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
       },
     );
   };
@@ -136,13 +133,10 @@ function BossToday() {
       {
         onSuccess: (resp) => {
           setBulkOpen(false);
-          const msg = (t('bulkRescheduleSuccess') || 'Перенесено приёмов: {count}').replace(
-            '{count}',
-            String(resp?.count ?? 0),
-          );
-          push({ kind: 'info', title: t('bulkReschedule') || 'Перенос', message: msg });
+          const msg = t('bulkRescheduleSuccess').replace('{count}', String(resp?.count ?? 0));
+          push({ kind: 'info', title: t('rescheduleTitle'), message: msg });
         },
-        onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }),
+        onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
       },
     );
   };
@@ -156,13 +150,13 @@ function BossToday() {
           onClick={() => setBulkOpen(true)}
           disabled={affectedCount === 0 || bulkReschedule.isPending}
         >
-          {t('bulkReschedule') || 'Перенести все'}
+          {t('bulkReschedule')}
           {affectedCount > 0 ? ` (${affectedCount})` : ''}
         </Btn>
       </div>
       <div className="grid gap-6 md:grid-cols-2">
-        <Column title="Ожидают решения" items={pending} role={user.role} onAction={handleAction} busy={transition.isPending} />
-        <Column title="Очередь / приглашения" items={queue} role={user.role} onAction={handleAction} busy={transition.isPending} />
+        <Column title={t('pendingDecision')} items={pending} role={user.role} onAction={handleAction} busy={transition.isPending} />
+        <Column title={t('awaitingPickup')} items={queue} role={user.role} onAction={handleAction} busy={transition.isPending} />
       </div>
       <RejectModal
         open={!!rejectFor}
@@ -188,11 +182,12 @@ function BossToday() {
 }
 
 function Column({ title, items, role, onAction, busy }) {
+  const { t } = useI18n();
   return (
     <section>
       <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-3">{title}</h2>
       {items.length === 0 ? (
-        <Empty>Пусто</Empty>
+        <Empty>{t('empty')}</Empty>
       ) : (
         <div className="grid gap-3">
           {items.map((a) => (
