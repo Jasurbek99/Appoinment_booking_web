@@ -72,6 +72,7 @@
   "notif_rejected": "Заявка отклонена",
   "notif_invited": "Босс зовёт сейчас",
   "notif_completed": "Заявка завершена",
+  "notif_rescheduled": "Заявка перенесена",
   "selectBoss": "Выберите босса",
   "selectCause": "Выберите причину",
   "sayLastName": "Введите фамилию для поиска статуса",
@@ -190,5 +191,10 @@
   "bulkRescheduleTitle": "Перенести все приёмы",
   "bossShort1": "Б1",
   "bossShort2": "Б2",
-  "bossShort3": "Б3"
+  "bossShort3": "Б3",
+  "dnd": "Не беспокоить",
+  "clearAll": "Очистить",
+  "noNotifications": "Уведомлений нет",
+  "enableBrowserNotifications": "Включить уведомления браузера",
+  "testNotification": "Тестовое уведомление"
 }

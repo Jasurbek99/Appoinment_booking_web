@@ -22,14 +22,11 @@ export function setupSockets(httpServer) {
   });
 
   io.use((socket, next) => {
+    socket.data.user = null;
     try {
       const cookies = parseCookie(socket.handshake.headers.cookie || '');
       const token = cookies.token;
-      if (!token) {
-        // Anonymous worker connection — allowed.
-        socket.data.user = null;
-        return next();
-      }
+      if (!token) return next(); // anonymous worker connection — allowed
       const payload = verifyToken(token);
       socket.data.user = {
         id: payload.sub,
@@ -38,7 +35,13 @@ export function setupSockets(httpServer) {
       };
       next();
     } catch (err) {
-      next(err);
+      // Stale or invalid JWT: don't kill the connection — degrade to anonymous
+      // so the client can still receive public:* events. The next API call
+      // will return 401 and the AuthProvider will log the user out.
+      if (process.env.NODE_ENV !== 'test') {
+        console.warn('[socket] invalid token, treating as anonymous:', err.message);
+      }
+      next();
     }
   });
 

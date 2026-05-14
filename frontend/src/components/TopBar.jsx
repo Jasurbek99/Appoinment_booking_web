@@ -1,6 +1,7 @@
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 import { Btn } from './primitives.jsx';
+import { NotificationBell } from './NotificationBell.jsx';
 
 export function TopBar({ title, children }) {
   const { user, logout } = useAuth();
@@ -19,6 +20,7 @@ export function TopBar({ title, children }) {
           >
             {(lang === 'ru' ? 'tk' : 'ru').toUpperCase()}
           </button>
+          {user && <NotificationBell />}
           {user && (
             <>
               <span className="text-stone-500">{user.displayName}</span>

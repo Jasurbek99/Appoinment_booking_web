@@ -73,6 +73,7 @@
   "notif_rejected": "Haýyş ret edildi",
   "notif_invited": "Başlyk häzir çagyrýar",
   "notif_completed": "Haýyş tamamlandy",
+  "notif_rescheduled": "Haýyş geçirildi",
   "selectBoss": "Başlygy saýlaň",
   "selectCause": "Sebäbi saýlaň",
   "sayLastName": "Statusy görmek üçin familiýaňyzy giriziň",
@@ -191,5 +192,10 @@
   "bulkRescheduleTitle": "Ähli kabullary geçirmek",
   "bossShort1": "B1",
   "bossShort2": "B2",
-  "bossShort3": "B3"
+  "bossShort3": "B3",
+  "dnd": "Päsgel berme",
+  "clearAll": "Arassala",
+  "noNotifications": "Bildiriş ýok",
+  "enableBrowserNotifications": "Brauzer bildirişlerini açmak",
+  "testNotification": "Synag bildirişi"
 }

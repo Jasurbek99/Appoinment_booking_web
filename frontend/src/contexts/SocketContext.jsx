@@ -14,12 +14,26 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     // Establish a connection regardless of auth — the server allows anonymous
     // workers to connect (no JWT in cookie) for /status page subscriptions.
-    const s = io(SOCKET_URL, {
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-    });
+    // Default transport order (polling → upgrade) is used deliberately: the
+    // Vite dev WS proxy is unreliable on Windows, so forcing 'websocket' first
+    // causes silent connection failures. Long-polling always works through
+    // the proxy and Socket.io upgrades to WS once the connection is alive.
+    const s = io(SOCKET_URL, { withCredentials: true });
     ref.current = s;
     setSocket(s);
+
+    if (import.meta.env.DEV) {
+      s.on('connect', () => console.log('[socket] connected', s.id));
+      s.on('disconnect', (reason) => console.log('[socket] disconnected', reason));
+      s.on('connect_error', (err) => console.warn('[socket] connect_error', err.message));
+      // Surface every appointment:* event arrival so the user can see whether
+      // events are reaching the client at all.
+      s.onAny((event, payload) => {
+        if (typeof event === 'string' && event.startsWith('appointment:')) {
+          console.log('[socket] event', event, payload?.id);
+        }
+      });
+    }
 
     return () => {
       s.disconnect();
