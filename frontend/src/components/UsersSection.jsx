@@ -13,6 +13,7 @@ const ROLES = [
   { id: 'boss2', label: 'Босс 2' },
   { id: 'boss3', label: 'Босс 3' },
 ];
+const BOSS_ROLES = new Set(['boss1', 'boss2', 'boss3']);
 const labelOf = (id) => ROLES.find((r) => r.id === id)?.label || id;
 
 export function UsersSection() {
@@ -23,6 +24,11 @@ export function UsersSection() {
   const remove = useDeleteUser();
   const { push } = useToast();
   const [editing, setEditing] = useState(null);
+
+  const bossUsernames = users.reduce((acc, u) => {
+    if (BOSS_ROLES.has(u.role)) acc[u.role] = u.username;
+    return acc;
+  }, {});
 
   const onSave = (form, isNew) => {
     const cb = {
@@ -75,6 +81,7 @@ export function UsersSection() {
           key={editing.isNew ? 'new' : editing.id}
           editing={editing}
           isMe={editing.id === me.id}
+          bossUsernames={bossUsernames}
           onClose={() => setEditing(null)}
           onSave={onSave}
           busy={create.isPending || update.isPending}
@@ -84,7 +91,7 @@ export function UsersSection() {
   );
 }
 
-function UserModal({ editing, isMe, onClose, onSave, busy }) {
+function UserModal({ editing, isMe, bossUsernames = {}, onClose, onSave, busy }) {
   const [displayName, setDisplayName] = useState(editing.displayName || '');
   const [username, setUsername] = useState(editing.username || '');
   const [password, setPassword] = useState(editing.password || '');
@@ -128,9 +135,13 @@ function UserModal({ editing, isMe, onClose, onSave, busy }) {
         <div>
           <label className="text-sm text-stone-600">Роль</label>
           <Select value={role} onChange={(e) => setRole(e.target.value)} disabled={isMe}>
-            {ROLES.map((r) => (
-              <option key={r.id} value={r.id}>{r.label}</option>
-            ))}
+            {ROLES.map((r) => {
+              const bossName = bossUsernames[r.id];
+              const label = bossName ? `@${bossName}` : r.label;
+              return (
+                <option key={r.id} value={r.id}>{label}</option>
+              );
+            })}
           </Select>
           {isMe && <div className="text-xs text-stone-500 mt-1">Свою роль изменить нельзя.</div>}
         </div>
