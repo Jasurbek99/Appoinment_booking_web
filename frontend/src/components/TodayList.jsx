@@ -3,11 +3,13 @@ import { useAppointments, useTransitionAppointment } from '../hooks/useAppointme
 import { useLiveAppointments } from '../hooks/useAppointmentEvents.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useToast } from '../contexts/ToastProvider.jsx';
+import { useI18n } from '../contexts/I18nProvider.jsx';
 import { AppointmentCard } from './AppointmentCard.jsx';
 import { RejectModal } from './RejectModal.jsx';
 import { Empty } from './primitives.jsx';
 
 export function TodayList({ filter }) {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { push } = useToast();
   const { data, isLoading, error } = useAppointments({ mode: 'today' });
@@ -16,11 +18,11 @@ export function TodayList({ filter }) {
   useLiveAppointments();
 
   if (isLoading) return <ListSkeleton />;
-  if (error) return <Empty>Не удалось загрузить</Empty>;
+  if (error) return <Empty>{t('loadFailed')}</Empty>;
 
   let list = data || [];
   if (filter) list = list.filter(filter);
-  if (list.length === 0) return <Empty>Пусто</Empty>;
+  if (list.length === 0) return <Empty>{t('empty')}</Empty>;
 
   const handleAction = (action, appt) => {
     if (action === 'reject') {
@@ -30,7 +32,7 @@ export function TodayList({ filter }) {
     transition.mutate(
       { id: appt.id, action },
       {
-        onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }),
+        onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
       },
     );
   };
@@ -40,7 +42,7 @@ export function TodayList({ filter }) {
       { id: rejectFor.id, action: 'reject', reason },
       {
         onSuccess: () => setRejectFor(null),
-        onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }),
+        onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
       },
     );
   };

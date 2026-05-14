@@ -27,7 +27,7 @@ export function CausesSection() {
   const onSave = (form, isNew) => {
     const cb = {
       onSuccess: () => setEditing(null),
-      onError: (err) => push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' }),
+      onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
     };
     if (isNew) {
       create.mutate(form, cb);
@@ -37,22 +37,22 @@ export function CausesSection() {
   };
 
   const onDelete = (id) => {
-    if (!confirm(t('deleteCauseConfirm') || 'Удалить эту причину?')) return;
+    if (!confirm(t('deleteCauseConfirm'))) return;
     remove.mutate(id, {
       onError: (err) => {
         const msg =
-          err?.code === 'system_cause' ? (t('systemCauseError') || 'Системную причину удалить нельзя') :
-          err?.code === 'cause_referenced' ? (t('causeReferencedError') || 'Причина используется в заявках') :
+          err?.code === 'system_cause' ? t('systemCauseError') :
+          err?.code === 'cause_referenced' ? t('causeReferencedError') :
           err?.code || 'unknown';
-        push({ kind: 'error', title: 'Ошибка', message: msg });
+        push({ kind: 'error', title: t('errorTitle'), message: msg });
       },
     });
   };
 
   const sectionTitle = (k) =>
-    k === 'visit' ? (t('causesVisit') || 'Причины приёма')
-    : k === 'reject' ? (t('causesReject') || 'Причины отказа')
-    : (t('causesReschedule') || 'Причины переноса');
+    k === 'visit' ? t('causesVisit')
+    : k === 'reject' ? t('causesReject')
+    : t('causesReschedule');
 
   return (
     <section className="space-y-6">
@@ -65,11 +65,11 @@ export function CausesSection() {
               size="sm"
               onClick={() => setEditing({ isNew: true, kind, id: '', label_ru: '', label_tk: '' })}
             >
-              + {t('addCause') || 'Добавить'}
+              + {t('add')}
             </Btn>
           </header>
           {grouped[kind].length === 0 ? (
-            <Empty>Пусто</Empty>
+            <Empty>{t('empty')}</Empty>
           ) : (
             <ul className="divide-y divide-stone-200 rounded-2xl border border-stone-200 bg-white">
               {grouped[kind].map((c) => (
@@ -79,7 +79,7 @@ export function CausesSection() {
                       {c.label_ru} <span className="text-stone-400">/ {c.label_tk}</span>
                     </div>
                     <div className="text-xs text-stone-500">
-                      id: {c.id}{c.isSystem ? ` · ${t('systemCauseTag') || 'системная'}` : ''}
+                      id: {c.id}{c.isSystem ? ` · ${t('systemCauseTag')}` : ''}
                     </div>
                   </div>
                   {!c.isSystem && (
@@ -134,32 +134,32 @@ function CauseModal({ editing, onClose, onSave, busy, existingIds }) {
   const valid = labelRu.trim() && labelTk.trim() && (!isNew || (id.trim() && !idClash));
 
   const kindLabel = (k) =>
-    k === 'visit' ? (t('kindVisit') || 'Приём')
-    : k === 'reject' ? (t('kindReject') || 'Отказ')
-    : (t('kindReschedule') || 'Перенос');
+    k === 'visit' ? t('kindVisit')
+    : k === 'reject' ? t('kindReject')
+    : t('kindReschedule');
 
   return (
     <Modal
       open
       onClose={onClose}
-      title={isNew ? (t('newCause') || 'Новая причина') : (t('editCause') || 'Редактировать причину')}
+      title={isNew ? t('newCause') : t('editCause')}
       footer={
         <>
-          <Btn kind="ghost" onClick={onClose}>{t('cancel') || 'Отмена'}</Btn>
+          <Btn kind="ghost" onClick={onClose}>{t('cancel')}</Btn>
           <Btn
             disabled={busy || !valid}
             onClick={() =>
               onSave({ id: isNew ? id : editing.id, kind, label_ru: labelRu, label_tk: labelTk }, isNew)
             }
           >
-            {t('save') || 'Сохранить'}
+            {t('save')}
           </Btn>
         </>
       }
     >
       <div className="space-y-3">
         <div>
-          <label className="text-sm text-stone-600">{t('causeKind') || 'Тип'}</label>
+          <label className="text-sm text-stone-600">{t('causeKind')}</label>
           <Select value={kind} onChange={(e) => setKind(e.target.value)} disabled={!isNew}>
             {KINDS.map((k) => (
               <option key={k} value={k}>{kindLabel(k)}</option>
@@ -167,16 +167,16 @@ function CauseModal({ editing, onClose, onSave, busy, existingIds }) {
           </Select>
         </div>
         <div>
-          <label className="text-sm text-stone-600">{t('causeIdLabel') || 'id (нижний регистр, латиница)'}</label>
+          <label className="text-sm text-stone-600">{t('causeIdLabel')}</label>
           <Input value={id} disabled={!isNew} onChange={(e) => setId(e.target.value)} />
-          {idClash && <div className="text-xs text-rose-600 mt-1">{t('idTakenError') || 'id уже используется'}</div>}
+          {idClash && <div className="text-xs text-rose-600 mt-1">{t('idTakenError')}</div>}
         </div>
         <div>
-          <label className="text-sm text-stone-600">{t('causeLabelRu') || 'Название (RU)'}</label>
+          <label className="text-sm text-stone-600">{t('causeLabelRu')}</label>
           <Input value={labelRu} onChange={(e) => setLabelRu(e.target.value)} />
         </div>
         <div>
-          <label className="text-sm text-stone-600">{t('causeLabelTk') || 'Название (TK)'}</label>
+          <label className="text-sm text-stone-600">{t('causeLabelTk')}</label>
           <Input value={labelTk} onChange={(e) => setLabelTk(e.target.value)} />
         </div>
       </div>

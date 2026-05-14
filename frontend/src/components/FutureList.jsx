@@ -1,9 +1,11 @@
 import { useAppointments } from '../hooks/useAppointments.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { useI18n } from '../contexts/I18nProvider.jsx';
 import { AppointmentCard } from './AppointmentCard.jsx';
 import { Empty } from './primitives.jsx';
 
 export function FutureList() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { data, isLoading, error } = useAppointments({ mode: 'future' });
 
@@ -19,8 +21,8 @@ export function FutureList() {
       </div>
     );
   }
-  if (error) return <Empty>Не удалось загрузить</Empty>;
-  if (!data || data.length === 0) return <Empty>Пусто</Empty>;
+  if (error) return <Empty>{t('loadFailed')}</Empty>;
+  if (!data || data.length === 0) return <Empty>{t('empty')}</Empty>;
 
   return (
     <div className="grid gap-3 md:grid-cols-2">

@@ -13,9 +13,9 @@ const TYPES = [
 
 const BOSSES = [
   { id: '', key: 'allBosses' },
-  { id: 'boss1', label: 'Boss 1' },
-  { id: 'boss2', label: 'Boss 2' },
-  { id: 'boss3', label: 'Boss 3' },
+  { id: 'boss1', key: 'roleBoss1' },
+  { id: 'boss2', key: 'roleBoss2' },
+  { id: 'boss3', key: 'roleBoss3' },
 ];
 
 // `showBossFilter` lets callers (staff) filter by boss; for boss dashboards
@@ -62,7 +62,7 @@ export function VisitorFrequency({ showBossFilter = false }) {
           >
             {BOSSES.map((b) => (
               <option key={b.id || 'all'} value={b.id}>
-                {b.key ? t(b.key) : b.label}
+                {t(b.key)}
               </option>
             ))}
           </Select>
@@ -109,9 +109,9 @@ export function VisitorFrequency({ showBossFilter = false }) {
                   </td>
                   {!data?.bossScope && r.byBoss && (
                     <td className="px-3 py-2 text-stone-500 whitespace-nowrap">
-                      <span className="mr-2">Б1: {r.byBoss.boss1}</span>
-                      <span className="mr-2">Б2: {r.byBoss.boss2}</span>
-                      <span>Б3: {r.byBoss.boss3}</span>
+                      <span className="mr-2">{t('bossShort1')}: {r.byBoss.boss1}</span>
+                      <span className="mr-2">{t('bossShort2')}: {r.byBoss.boss2}</span>
+                      <span>{t('bossShort3')}: {r.byBoss.boss3}</span>
                     </td>
                   )}
                 </tr>

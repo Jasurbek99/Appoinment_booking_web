@@ -25,23 +25,23 @@ export function RejectModal({ open, onClose, onConfirm, busy }) {
     <Modal
       open={open}
       onClose={close}
-      title={t('reject') || 'Отклонить'}
+      title={t('reject')}
       footer={
         <>
           <Btn kind="ghost" onClick={close} disabled={busy}>
-            {t('cancel') || 'Отмена'}
+            {t('cancel')}
           </Btn>
           <Btn kind="danger" onClick={submit} disabled={busy}>
-            {t('reject') || 'Отклонить'}
+            {t('reject')}
           </Btn>
         </>
       }
     >
       <div className="space-y-3">
         <div>
-          <label className="text-sm text-stone-600">{t('rejectionCause') || 'Причина отказа'}</label>
+          <label className="text-sm text-stone-600">{t('rejectionCause')}</label>
           <Select value={causeId} onChange={(e) => setCauseId(e.target.value)} autoFocus>
-            <option value="">{t('rejectionCauseAny') || '— не указано —'}</option>
+            <option value="">{t('rejectionCauseAny')}</option>
             {causes.map((c) => (
               <option key={c.id} value={c.id}>
                 {lang === 'tk' ? c.label_tk : c.label_ru}
@@ -50,7 +50,7 @@ export function RejectModal({ open, onClose, onConfirm, busy }) {
           </Select>
         </div>
         <div>
-          <label className="text-sm text-stone-600">{t('rejectionReason') || 'Причина отказа (необязательно)'}</label>
+          <label className="text-sm text-stone-600">{t('rejectionReason')}</label>
           <Input value={reason} onChange={(e) => setReason(e.target.value)} />
         </div>
       </div>

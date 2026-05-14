@@ -40,7 +40,7 @@ export function BulkRescheduleModal({ open, onClose, onConfirm, busy, queueCount
     <Modal
       open={open}
       onClose={close}
-      title={t('bulkReschedule') || 'Перенести все приёмы'}
+      title={t('bulkRescheduleTitle')}
       footer={
         <>
           <Btn kind="ghost" onClick={close} disabled={busy}>
@@ -54,13 +54,10 @@ export function BulkRescheduleModal({ open, onClose, onConfirm, busy, queueCount
     >
       <div className="space-y-3">
         <div className="text-sm text-stone-700">
-          {(t('bulkRescheduleConfirm') || 'Будет перенесено приёмов: {count}').replace(
-            '{count}',
-            String(queueCount),
-          )}
+          {t('bulkRescheduleConfirm').replace('{count}', String(queueCount))}
         </div>
         <div>
-          <label className="text-sm text-stone-600">{t('shiftDays') || 'На сколько дней вперёд'}</label>
+          <label className="text-sm text-stone-600">{t('shiftDays')}</label>
           <Input
             type="number"
             min={1}

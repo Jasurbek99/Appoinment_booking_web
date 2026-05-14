@@ -26,9 +26,9 @@ export function LoginPage() {
       navigate('/');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setError('Неверный логин или пароль');
+        setError(t('wrongCredentials'));
       } else {
-        setError('Не удалось войти');
+        setError(t('loginFailed'));
       }
     } finally {
       setSubmitting(false);

@@ -21,7 +21,7 @@ export function StaffDashboard() {
     <div className="min-h-screen flex flex-col">
       <TopBar>
         <div className="flex justify-end">
-          <Btn size="sm" onClick={() => setNewOpen(true)}>+ Новая заявка</Btn>
+          <Btn size="sm" onClick={() => setNewOpen(true)}>+ {t('newAppointment')}</Btn>
         </div>
       </TopBar>
       <NewAppointmentModal open={newOpen} onClose={() => setNewOpen(false)} />

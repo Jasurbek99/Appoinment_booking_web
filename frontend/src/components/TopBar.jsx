@@ -15,9 +15,9 @@ export function TopBar({ title, children }) {
           <button
             onClick={() => setLang(lang === 'ru' ? 'tk' : 'ru')}
             className="text-stone-600 hover:text-stone-900 px-2"
-            title={lang}
+            title={t('language')}
           >
-            {lang.toUpperCase()}
+            {(lang === 'ru' ? 'tk' : 'ru').toUpperCase()}
           </button>
           {user && (
             <>

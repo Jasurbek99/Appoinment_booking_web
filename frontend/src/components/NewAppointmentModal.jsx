@@ -4,16 +4,14 @@ import { useEmployeeSearch, useFirms } from '../hooks/useEmployees.js';
 import { useCauses } from '../hooks/useCauses.js';
 import { useCreateAppointment } from '../hooks/useAppointments.js';
 import { useToast } from '../contexts/ToastProvider.jsx';
+import { useI18n } from '../contexts/I18nProvider.jsx';
 import { ApiError } from '../lib/api.js';
 import { todayLocalISO } from '../lib/format.js';
 
-const TABS = [
-  { id: 'employee', label: 'Сотрудник' },
-  { id: 'guest', label: 'Гость' },
-  { id: 'foreign', label: 'Иностранный гость' },
-];
+const TAB_IDS = ['employee', 'guest', 'foreign'];
 
 export function NewAppointmentModal({ open, onClose }) {
+  const { t, lang } = useI18n();
   const [tab, setTab] = useState('employee');
   const [employee, setEmployee] = useState(null);
   const [manualMode, setManualMode] = useState(false);
@@ -87,7 +85,7 @@ export function NewAppointmentModal({ open, onClose }) {
 
     try {
       await create.mutateAsync({ input, force });
-      push({ kind: 'success', title: 'Заявка создана' });
+      push({ kind: 'success', title: t('requestCreated') });
       reset();
       onClose();
     } catch (err) {
@@ -95,7 +93,7 @@ export function NewAppointmentModal({ open, onClose }) {
         setDuplicate(err.body.existing);
         return;
       }
-      push({ kind: 'error', title: 'Ошибка', message: err?.code || 'unknown' });
+      push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' });
     }
   }
 
@@ -112,28 +110,28 @@ export function NewAppointmentModal({ open, onClose }) {
         reset();
         onClose();
       }}
-      title="Новая заявка"
+      title={t('newAppointment')}
       size="lg"
       footer={
         <>
-          <Btn kind="ghost" onClick={() => { reset(); onClose(); }}>Отмена</Btn>
+          <Btn kind="ghost" onClick={() => { reset(); onClose(); }}>{t('cancel')}</Btn>
           <Btn onClick={() => submit()} disabled={!canSubmit || create.isPending}>
-            Создать
+            {t('create')}
           </Btn>
         </>
       }
     >
       <div className="flex gap-1 mb-4 border-b border-stone-200">
-        {TABS.map((t) => (
+        {TAB_IDS.map((id) => (
           <button
-            key={t.id}
-            onClick={() => { setTab(t.id); setEmployee(null); setManualMode(t.id !== 'employee'); }}
+            key={id}
+            onClick={() => { setTab(id); setEmployee(null); setManualMode(id !== 'employee'); }}
             className={
               'px-3 py-2 text-sm border-b-2 ' +
-              (tab === t.id ? 'border-stone-900' : 'border-transparent text-stone-500 hover:text-stone-900')
+              (tab === id ? 'border-stone-900' : 'border-transparent text-stone-500 hover:text-stone-900')
             }
           >
-            {t.label}
+            {t(id)}
           </button>
         ))}
       </div>
@@ -156,34 +154,34 @@ export function NewAppointmentModal({ open, onClose }) {
 
       <div className="grid grid-cols-2 gap-3 mt-4">
         <div>
-          <label className="text-sm text-stone-600">Босс</label>
+          <label className="text-sm text-stone-600">{t('boss')}</label>
           <Select value={bossId} onChange={(e) => setBossId(e.target.value)}>
-            <option value="boss1">Босс 1</option>
-            <option value="boss2">Босс 2</option>
-            <option value="boss3">Босс 3</option>
+            <option value="boss1">{t('roleBoss1')}</option>
+            <option value="boss2">{t('roleBoss2')}</option>
+            <option value="boss3">{t('roleBoss3')}</option>
           </Select>
         </div>
         <div>
-          <label className="text-sm text-stone-600">Дата</label>
+          <label className="text-sm text-stone-600">{t('date')}</label>
           <Input type="date" value={date} min={todayLocalISO()} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div>
-          <label className="text-sm text-stone-600">Причина</label>
+          <label className="text-sm text-stone-600">{t('cause')}</label>
           <Select value={causeId} onChange={(e) => setCauseId(e.target.value)}>
             {causes.map((c) => (
-              <option key={c.id} value={c.id}>{c.label_ru}</option>
+              <option key={c.id} value={c.id}>{lang === 'tk' ? c.label_tk : c.label_ru}</option>
             ))}
           </Select>
         </div>
         <div className="flex items-end">
           <label className="text-sm flex items-center gap-2">
             <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
-            Срочно
+            {t('urgent')}
           </label>
         </div>
         {tab !== 'foreign' && (
           <div className="col-span-2">
-            <label className="text-sm text-stone-600">Телефон (необязательно)</label>
+            <label className="text-sm text-stone-600">{t('phoneOptional')}</label>
             <Input
               type="tel"
               value={phone}
@@ -194,7 +192,7 @@ export function NewAppointmentModal({ open, onClose }) {
         )}
         {causeId === 'other' && (
           <div className="col-span-2">
-            <label className="text-sm text-stone-600">Опишите причину</label>
+            <label className="text-sm text-stone-600">{t('customCause')}</label>
             <Input value={customCause} onChange={(e) => setCustomCause(e.target.value)} />
           </div>
         )}
@@ -202,10 +200,10 @@ export function NewAppointmentModal({ open, onClose }) {
 
       {duplicate && (
         <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm">
-          У этого посетителя уже есть заявка на этот день (статус: {duplicate.status}). Создать ещё одну?
+          {t('duplicateConfirm').replace('{status}', duplicate.status)}
           <div className="mt-2 flex gap-2 justify-end">
-            <Btn size="sm" kind="ghost" onClick={() => setDuplicate(null)}>Отмена</Btn>
-            <Btn size="sm" onClick={() => submit({ force: true })}>Всё равно создать</Btn>
+            <Btn size="sm" kind="ghost" onClick={() => setDuplicate(null)}>{t('cancel')}</Btn>
+            <Btn size="sm" onClick={() => submit({ force: true })}>{t('createAnyway')}</Btn>
           </div>
         </div>
       )}
@@ -214,23 +212,22 @@ export function NewAppointmentModal({ open, onClose }) {
 }
 
 function EmployeePicker({ selected, onSelect, onManual }) {
+  const { t } = useI18n();
   const [q, setQ] = useState('');
   const [firm, setFirm] = useState('');
   const { data: firmsData } = useFirms();
   const { data, isFetching } = useEmployeeSearch(q, firm);
 
   const firms = firmsData?.firms || [];
-  const placeholder = firm
-    ? 'Поиск по имени или фамилии'
-    : 'Поиск по имени, фамилии или фирме';
-  const emptyHint = q || firm ? 'Ничего не найдено' : 'Введите запрос или выберите фирму';
+  const placeholder = firm ? t('searchByNameOrLastName') : t('searchEmployee');
+  const emptyHint = q || firm ? t('noResults') : t('enterQueryOrFirm');
 
   return (
     <div>
       <div className="flex gap-2">
         <div className="w-44 shrink-0">
           <Select value={firm} onChange={(e) => setFirm(e.target.value)}>
-            <option value="">Все фирмы</option>
+            <option value="">{t('allFirms')}</option>
             {firms.map((f) => (
               <option key={f} value={f}>{f}</option>
             ))}
@@ -247,12 +244,12 @@ function EmployeePicker({ selected, onSelect, onManual }) {
       </div>
       {data?.degraded && (
         <div className="mt-2 text-xs text-stone-500">
-          Каталог недоступен — используйте «вписать вручную».
+          {t('catalogUnavailable')}
         </div>
       )}
       <div className="mt-3 max-h-56 overflow-auto">
         {(data?.results || []).length === 0 ? (
-          <Empty>{isFetching ? 'Поиск…' : emptyHint}</Empty>
+          <Empty>{isFetching ? t('searching') : emptyHint}</Empty>
         ) : (
           <ul className="space-y-1">
             {data.results.map((e) => (
@@ -275,34 +272,35 @@ function EmployeePicker({ selected, onSelect, onManual }) {
       </div>
       {selected && (
         <div className="mt-2 text-sm">
-          Выбрано: <Badge kind="info">{selected.firstName} {selected.lastName}</Badge>
+          {t('selectedLabel')}: <Badge kind="info">{selected.firstName} {selected.lastName}</Badge>
         </div>
       )}
       <div className="mt-3 text-right">
-        <Btn kind="ghost" size="sm" onClick={onManual}>Вписать вручную</Btn>
+        <Btn kind="ghost" size="sm" onClick={onManual}>{t('addManually')}</Btn>
       </div>
     </div>
   );
 }
 
 function ManualEntry({ first, setFirst, last, setLast, company, setCompany, showBackToSearch, onBack }) {
+  const { t } = useI18n();
   return (
     <div className="grid grid-cols-2 gap-3">
       <div>
-        <label className="text-sm text-stone-600">Имя</label>
+        <label className="text-sm text-stone-600">{t('firstName')}</label>
         <Input value={first} onChange={(e) => setFirst(e.target.value)} />
       </div>
       <div>
-        <label className="text-sm text-stone-600">Фамилия</label>
+        <label className="text-sm text-stone-600">{t('lastName')}</label>
         <Input value={last} onChange={(e) => setLast(e.target.value)} />
       </div>
       <div className="col-span-2">
-        <label className="text-sm text-stone-600">Фирма</label>
+        <label className="text-sm text-stone-600">{t('company')}</label>
         <Input value={company} onChange={(e) => setCompany(e.target.value)} />
       </div>
       {showBackToSearch && (
         <div className="col-span-2 text-right">
-          <Btn kind="ghost" size="sm" onClick={onBack}>← Назад к поиску</Btn>
+          <Btn kind="ghost" size="sm" onClick={onBack}>{t('backToSearchLong')}</Btn>
         </div>
       )}
     </div>

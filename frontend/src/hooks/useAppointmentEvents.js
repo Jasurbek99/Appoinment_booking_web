@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppointmentEvents } from '../contexts/SocketContext.jsx';
 import { useToast } from '../contexts/ToastProvider.jsx';
+import { useI18n } from '../contexts/I18nProvider.jsx';
 
 const KEY = 'appointments';
 const ALWAYS = () => true;
@@ -12,24 +13,25 @@ const ALWAYS = () => true;
 export function useLiveAppointments({ todayMatcher = ALWAYS } = {}) {
   const qc = useQueryClient();
   const { push } = useToast();
+  const { t } = useI18n();
 
   const handlers = useMemo(
     () => ({
       created: (dto) => {
         applyToCache(qc, dto, todayMatcher);
-        if (dto.urgent) push({ kind: 'info', title: 'Новая срочная заявка' });
+        if (dto.urgent) push({ kind: 'info', title: t('newUrgentRequest') });
       },
       approved: (dto) => applyToCache(qc, dto, todayMatcher),
       rejected: (dto) => applyToCache(qc, dto, todayMatcher),
       invited: (dto) => {
         applyToCache(qc, dto, todayMatcher);
-        push({ kind: 'info', title: 'Босс зовёт сейчас', message: visitorLabel(dto) });
-        maybeFireBrowserNotification(dto);
+        push({ kind: 'info', title: t('notif_invited'), message: visitorLabel(dto) });
+        maybeFireBrowserNotification(dto, t);
       },
       completed: (dto) => applyToCache(qc, dto, todayMatcher),
       rescheduled: (dto) => applyToCache(qc, dto, todayMatcher),
     }),
-    [qc, todayMatcher, push],
+    [qc, todayMatcher, push, t],
   );
 
   useAppointmentEvents(handlers);
@@ -58,12 +60,12 @@ function visitorLabel(dto) {
   return '';
 }
 
-function maybeFireBrowserNotification(dto) {
+function maybeFireBrowserNotification(dto, t) {
   if (typeof Notification === 'undefined') return;
   if (Notification.permission !== 'granted') return;
   if (!document.hidden) return;
   try {
-    new Notification('Босс зовёт сейчас', { body: visitorLabel(dto) });
+    new Notification(t('notif_invited'), { body: visitorLabel(dto) });
   } catch {
     // ignore
   }

@@ -3,16 +3,20 @@ import { useJournal } from '../hooks/useJournal.js';
 import { useUsers } from '../hooks/useUsers.js';
 import { Input, Select, Empty } from './primitives.jsx';
 import { fmtTime, fmtDate } from '../lib/format.js';
+import { useI18n } from '../contexts/I18nProvider.jsx';
 
-const ACTIONS = [
-  { id: '', label: 'Все действия' },
-  { id: 'create', label: 'создал заявку' },
-  { id: 'approve', label: 'одобрил' },
-  { id: 'reject', label: 'отклонил' },
-  { id: 'reschedule', label: 'перенёс' },
-  { id: 'invite', label: 'пригласил' },
-  { id: 'complete', label: 'завершил' },
-];
+const ACTION_IDS = ['', 'create', 'approve', 'reject', 'reschedule', 'invite', 'complete'];
+
+function actionLabel(id, t) {
+  if (!id) return t('allActions');
+  if (id === 'create') return t('actionCreate');
+  if (id === 'approve') return t('actionApprove');
+  if (id === 'reject') return t('actionReject');
+  if (id === 'reschedule') return t('actionReschedule');
+  if (id === 'invite') return t('actionInvite');
+  if (id === 'complete') return t('actionComplete');
+  return id;
+}
 
 function formatNote(action, note) {
   if (!note) return null;
@@ -31,6 +35,7 @@ function formatNote(action, note) {
 }
 
 export function JournalTable({ hideUserFilter = false }) {
+  const { t } = useI18n();
   const [filters, setFilters] = useState({});
   const { data = [], isLoading } = useJournal(filters);
 
@@ -43,35 +48,35 @@ export function JournalTable({ hideUserFilter = false }) {
           type="date"
           value={filters.from || ''}
           onChange={(e) => setFilter('from', e.target.value)}
-          placeholder="С"
+          placeholder={t('from')}
         />
         <Input
           type="date"
           value={filters.to || ''}
           onChange={(e) => setFilter('to', e.target.value)}
-          placeholder="По"
+          placeholder={t('to')}
         />
         {!hideUserFilter && <UserFilter value={filters.user_id || ''} onChange={(v) => setFilter('user_id', v)} />}
         <Select value={filters.action || ''} onChange={(e) => setFilter('action', e.target.value)}>
-          {ACTIONS.map((a) => (
-            <option key={a.id || 'all'} value={a.id}>{a.label}</option>
+          {ACTION_IDS.map((id) => (
+            <option key={id || 'all'} value={id}>{actionLabel(id, t)}</option>
           ))}
         </Select>
       </header>
       {isLoading ? (
         <div className="text-stone-500 text-sm">…</div>
       ) : data.length === 0 ? (
-        <Empty>Записей нет</Empty>
+        <Empty>{t('noEntries')}</Empty>
       ) : (
         <div className="rounded-2xl border border-stone-200 bg-white overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-stone-50 text-stone-500">
               <tr>
-                <th className="text-left px-3 py-2">Когда</th>
-                <th className="text-left px-3 py-2">Кто</th>
-                <th className="text-left px-3 py-2">Действие</th>
-                <th className="text-left px-3 py-2">Заявка</th>
-                <th className="text-left px-3 py-2">Кому</th>
+                <th className="text-left px-3 py-2">{t('when')}</th>
+                <th className="text-left px-3 py-2">{t('who')}</th>
+                <th className="text-left px-3 py-2">{t('what')}</th>
+                <th className="text-left px-3 py-2">{t('appointmentNo')}</th>
+                <th className="text-left px-3 py-2">{t('toWhom')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-200">
@@ -82,10 +87,10 @@ export function JournalTable({ hideUserFilter = false }) {
                   </td>
                   <td className="px-3 py-2">
                     {row.user.displayName || row.user.id}
-                    {row.user.deleted && <span className="text-xs text-stone-400 ml-1">(удалён)</span>}
+                    {row.user.deleted && <span className="text-xs text-stone-400 ml-1">({t('deletedMark')})</span>}
                   </td>
                   <td className="px-3 py-2">
-                    {ACTIONS.find((a) => a.id === row.action)?.label || row.action}
+                    {actionLabel(row.action, t)}
                     {(() => {
                       const formatted = formatNote(row.action, row.note);
                       return formatted ? <div className="text-xs text-stone-500">{formatted}</div> : null;
@@ -109,10 +114,11 @@ export function JournalTable({ hideUserFilter = false }) {
 }
 
 function UserFilter({ value, onChange }) {
+  const { t } = useI18n();
   const { data: users = [] } = useUsers();
   return (
     <Select value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Все пользователи</option>
+      <option value="">{t('allUsers')}</option>
       {users.map((u) => (
         <option key={u.id} value={u.id}>{u.displayName}</option>
       ))}

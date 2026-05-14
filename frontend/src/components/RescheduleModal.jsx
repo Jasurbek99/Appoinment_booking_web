@@ -34,21 +34,21 @@ export function RescheduleModal({ open, onClose, onConfirm, busy }) {
     <Modal
       open={open}
       onClose={close}
-      title={t('reschedule') || 'Перенести на другой день'}
+      title={t('rescheduleModalTitle')}
       footer={
         <>
           <Btn kind="ghost" onClick={close} disabled={busy}>
-            {t('cancel') || 'Отмена'}
+            {t('cancel')}
           </Btn>
           <Btn kind="info" onClick={submit} disabled={busy || !valid}>
-            {t('reschedule') || 'Перенести'}
+            {t('reschedule')}
           </Btn>
         </>
       }
     >
       <div className="space-y-3">
         <div>
-          <label className="text-sm text-stone-600">{t('newDate') || 'Новая дата'}</label>
+          <label className="text-sm text-stone-600">{t('newDate')}</label>
           <Input
             type="date"
             min={todayLocalISO()}
@@ -58,9 +58,9 @@ export function RescheduleModal({ open, onClose, onConfirm, busy }) {
           />
         </div>
         <div>
-          <label className="text-sm text-stone-600">{t('rescheduleCause') || 'Причина переноса'}</label>
+          <label className="text-sm text-stone-600">{t('rescheduleCause')}</label>
           <Select value={causeId} onChange={(e) => setCauseId(e.target.value)}>
-            <option value="">{t('rescheduleCauseAny') || '— не указано —'}</option>
+            <option value="">{t('rescheduleCauseAny')}</option>
             {causes.map((c) => (
               <option key={c.id} value={c.id}>
                 {lang === 'tk' ? c.label_tk : c.label_ru}
@@ -69,7 +69,7 @@ export function RescheduleModal({ open, onClose, onConfirm, busy }) {
           </Select>
         </div>
         <div>
-          <label className="text-sm text-stone-600">{t('rescheduleReason') || 'Комментарий (необязательно)'}</label>
+          <label className="text-sm text-stone-600">{t('rescheduleReason')}</label>
           <Input value={reason} onChange={(e) => setReason(e.target.value)} />
         </div>
       </div>
