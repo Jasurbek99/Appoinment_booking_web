@@ -118,6 +118,30 @@ already on stderr — paste them when asking for help.
 To deploy a specific commit/branch (e.g. a hotfix branch) without pulling
 from origin, `git checkout` it first then run `SKIP_PULL=1 bash scripts/deploy.sh`.
 
+## Database: bundled vs external
+
+The stack runs in one of two database modes, chosen by `COMPOSE_PROFILES`
+in `.env.production`:
+
+| Mode | `COMPOSE_PROFILES` | `DB_SERVER` | What runs |
+|---|---|---|---|
+| Bundled (default for greenfield) | `bundled-db` | `mssql` | mssql + backend + frontend |
+| External (existing prod DB) | _(empty)_ | prod DB IP/hostname | backend + frontend only |
+
+In **external** mode the bundled mssql service is skipped entirely — the
+backend connects directly to your production database server. Things to
+check before switching:
+
+- The deploy host can reach the prod DB IP on port 1433 (`nc -zv <ip> 1433`).
+- The DB account in `DB_USER`/`DB_PASSWORD` exists on the prod server and
+  has `CREATE DATABASE` rights on first migrate (or the `appointments`
+  database already exists and the account has `db_owner` on it).
+- The `EMPLOYEE_DB_*` account exists on the HR database, read-only.
+- The prod DB's firewall accepts connections from the deploy host's IP.
+
+Switching modes after the fact is non-trivial — you'd need to export and
+re-import data. Pick one mode at the start and stick with it.
+
 ## Port layout
 
 Only one host port is bound:

@@ -69,21 +69,28 @@ $COMPOSE build
 log "starting stack (detached)"
 $COMPOSE up -d --remove-orphans
 
-# Wait for mssql healthcheck before running migrations, otherwise the first
-# 'migrate' invocation races the SQL Server startup.
-log "waiting for mssql to be healthy"
+# Wait for the backend to be able to reach its database before running
+# migrations. /api/health pings the DB, so this covers both the bundled-db
+# profile (waits for the mssql container to start) and the external-db
+# case (waits for connectivity to the prod DB IP).
+log "waiting for backend to reach its database"
+DB_READY=0
 for i in $(seq 1 60); do
-  status="$($COMPOSE ps --format json mssql 2>/dev/null | grep -o '"Health":"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
+  # Use the backend container's own healthcheck status — it polls /api/health
+  # on localhost:3000 every 10s and flips to "healthy" once the DB ping passes.
+  status="$(docker inspect -f '{{.State.Health.Status}}' appointments-backend 2>/dev/null || true)"
   if [[ "$status" == "healthy" ]]; then
-    log "mssql healthy after ${i}0s"
+    log "backend healthy after ~${i}0s"
+    DB_READY=1
     break
-  fi
-  if [[ "$i" == "60" ]]; then
-    $COMPOSE logs --tail=50 mssql >&2
-    die "mssql did not become healthy within 10 minutes"
   fi
   sleep 10
 done
+
+if [[ "$DB_READY" != "1" ]]; then
+  $COMPOSE logs --tail=80 backend >&2
+  die "backend did not reach its database within 10 minutes — check DB_SERVER, DB_USER, DB_PASSWORD and firewall rules"
+fi
 
 # ---- migrations -------------------------------------------------------------
 

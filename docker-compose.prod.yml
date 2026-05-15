@@ -11,12 +11,16 @@
 #     remove that block + its volume.
 
 services:
+  # Bundled MSSQL — only starts when the "bundled-db" compose profile is
+  # active. When you point DB_SERVER at an external production database,
+  # leave COMPOSE_PROFILES unset and this service is skipped entirely.
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: appointments-mssql
+    profiles: ["bundled-db"]
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD must be set in .env}"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-}"
       MSSQL_PID: "Developer"
     volumes:
       - mssql-data:/var/opt/mssql
@@ -41,8 +45,11 @@ services:
       PORT: 3000
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
       BCRYPT_ROUNDS: "${BCRYPT_ROUNDS:-12}"
-      DB_SERVER: mssql
-      DB_PORT: 1433
+      # DB_SERVER defaults to the bundled mssql container's hostname. Override
+      # with the prod database IP/hostname in .env.production when using an
+      # external DB (and leave COMPOSE_PROFILES unset so mssql isn't started).
+      DB_SERVER: "${DB_SERVER:-mssql}"
+      DB_PORT: "${DB_PORT:-1433}"
       DB_NAME: "${DB_NAME:-appointments}"
       DB_NAME_TEST: "${DB_NAME_TEST:-appointments_test}"
       DB_USER: "${DB_USER:-sa}"
@@ -57,9 +64,9 @@ services:
       TRUST_PROXY: "${TRUST_PROXY:-1}"
       LOG_LEVEL: "${LOG_LEVEL:-info}"
       BODY_LIMIT: "${BODY_LIMIT:-100kb}"
-    depends_on:
-      mssql:
-        condition: service_healthy
+    # No hard depends_on: the bundled mssql is profile-gated (may not be
+    # running), and external DBs are out of compose's control entirely.
+    # The deploy script's /api/health polling enforces readiness instead.
     restart: unless-stopped
     networks:
       - app
