@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel in-flight runs when a new push lands on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (lint + test + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Integration tests need MSSQL. Skip in CI by default; flip to a service
+      # container once you're ready to pay the ~30s spin-up per run.
+      - name: Test (unit only)
+        run: npm test
+        env:
+          RUN_DB_TESTS: '0'
+          NODE_ENV: test
+          JWT_SECRET: ci-jwt-secret-not-used-but-must-be-32-chars-long
+          DB_SERVER: localhost
+          DB_NAME: appointments
+          DB_USER: sa
+          DB_PASSWORD: ci-placeholder
+          EMPLOYEE_DB_SERVER: localhost
+          EMPLOYEE_DB_NAME: hr
+          EMPLOYEE_DB_USER: sa
+          EMPLOYEE_DB_PASSWORD: ci-placeholder
+
+      - name: Docker build (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: appointments-backend:ci
+
+  frontend:
+    name: frontend (lint + test + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: ''
+          VITE_SOCKET_URL: ''
+
+      - name: Docker build (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: false
+          tags: appointments-frontend:ci
+          build-args: |
+            VITE_API_URL=
+            VITE_SOCKET_URL=

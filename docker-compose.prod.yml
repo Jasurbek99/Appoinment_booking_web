@@ -1,0 +1,91 @@
+# Production stack: mssql + backend + frontend(nginx).
+# Usage:
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+#
+# Notes:
+#   * MSSQL has no host port mapping — only the backend reaches it on the
+#     internal network. Bind a host port only for emergency DBA access.
+#   * Frontend container is the only public-facing service; put a host nginx
+#     or Traefik in front of it for TLS termination.
+#   * For HA / cloud: replace the mssql service with a managed database and
+#     remove that block + its volume.
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: appointments-mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD must be set in .env}"
+      MSSQL_PID: "Developer"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -No -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - app
+
+  backend:
+    build:
+      context: ./backend
+    container_name: appointments-backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
+      BCRYPT_ROUNDS: "${BCRYPT_ROUNDS:-12}"
+      DB_SERVER: mssql
+      DB_PORT: 1433
+      DB_NAME: "${DB_NAME:-appointments}"
+      DB_NAME_TEST: "${DB_NAME_TEST:-appointments_test}"
+      DB_USER: "${DB_USER:-sa}"
+      DB_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD must be set}"
+      INITIAL_SECRETARY_PASSWORD: "${INITIAL_SECRETARY_PASSWORD:-}"
+      EMPLOYEE_DB_SERVER: "${EMPLOYEE_DB_SERVER:?EMPLOYEE_DB_SERVER must be set}"
+      EMPLOYEE_DB_PORT: "${EMPLOYEE_DB_PORT:-1433}"
+      EMPLOYEE_DB_NAME: "${EMPLOYEE_DB_NAME:?EMPLOYEE_DB_NAME must be set}"
+      EMPLOYEE_DB_USER: "${EMPLOYEE_DB_USER:?EMPLOYEE_DB_USER must be set}"
+      EMPLOYEE_DB_PASSWORD: "${EMPLOYEE_DB_PASSWORD:?EMPLOYEE_DB_PASSWORD must be set}"
+      CORS_ORIGIN: "${CORS_ORIGIN:-}"
+      TRUST_PROXY: "${TRUST_PROXY:-1}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+      BODY_LIMIT: "${BODY_LIMIT:-100kb}"
+    depends_on:
+      mssql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Empty = same-origin: frontend nginx routes /api and /socket.io to backend.
+        VITE_API_URL: "${VITE_API_URL:-}"
+        VITE_SOCKET_URL: "${VITE_SOCKET_URL:-}"
+    container_name: appointments-frontend
+    ports:
+      # Container always listens on 80; bind to a free host port. Default 8088
+      # leaves 80/443 available for a host TLS terminator (host nginx, Traefik,
+      # Caddy). Override with FRONTEND_PORT=80 when there's no proxy in front.
+      - "${FRONTEND_PORT:-8088}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - app
+
+volumes:
+  mssql-data:
+
+networks:
+  app:
+    driver: bridge

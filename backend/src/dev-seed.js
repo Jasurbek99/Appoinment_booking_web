@@ -10,6 +10,11 @@ import sql from 'mssql';
 import { getPool, closePool } from './db/pool.js';
 import { config } from './config.js';
 
+if (config.isProduction) {
+  console.error('Refusing to run dev-seed in production (NODE_ENV=production).');
+  process.exit(1);
+}
+
 async function ensureUser(pool, { username, display_name, role, password = 'changeme' }) {
   const existing = await pool
     .request()

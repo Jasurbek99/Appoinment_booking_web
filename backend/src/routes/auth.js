@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { findByUsername } from '../services/users.js';
 import { verifyPassword, signToken } from '../services/auth.js';
 import { requireAuth } from '../middleware/auth.js';
+import { loginIpLimiter, loginUserLimiter } from '../middleware/rateLimit.js';
 import { ValidationError, UnauthorizedError } from '../lib/errors.js';
 import { config } from '../config.js';
 
@@ -22,7 +23,7 @@ const cookieOptions = {
 
 export const authRouter = Router();
 
-authRouter.post('/login', async (req, res, next) => {
+authRouter.post('/login', loginIpLimiter, loginUserLimiter, async (req, res, next) => {
   try {
     const parse = loginSchema.safeParse(req.body);
     if (!parse.success) throw new ValidationError(parse.error.flatten().fieldErrors);

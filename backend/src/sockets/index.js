@@ -9,17 +9,18 @@ import { Server } from 'socket.io';
 import { parse as parseCookie } from 'cookie';
 import { verifyToken } from '../services/auth.js';
 import { config } from '../config.js';
+import { logger } from '../lib/logger.js';
 
 const STAFF_ROLES = new Set(['secretary', 'assistant1', 'assistant2', 'assistant3']);
 const BOSS_ROLES = new Set(['boss1', 'boss2', 'boss3']);
 
 export function setupSockets(httpServer) {
-  const io = new Server(httpServer, {
-    cors: {
-      origin: config.corsOrigin,
-      credentials: true,
-    },
-  });
+  // Same-origin deployment (CORS_ORIGIN empty) → no CORS block needed.
+  // Otherwise allow the configured origins with credentials so cookies flow.
+  const serverOptions = config.corsOrigin.length > 0
+    ? { cors: { origin: config.corsOrigin, credentials: true } }
+    : {};
+  const io = new Server(httpServer, serverOptions);
 
   io.use((socket, next) => {
     socket.data.user = null;
@@ -39,7 +40,7 @@ export function setupSockets(httpServer) {
       // so the client can still receive public:* events. The next API call
       // will return 401 and the AuthProvider will log the user out.
       if (process.env.NODE_ENV !== 'test') {
-        console.warn('[socket] invalid token, treating as anonymous:', err.message);
+        logger.warn({ msg: err.message }, 'socket invalid token, treating as anonymous');
       }
       next();
     }

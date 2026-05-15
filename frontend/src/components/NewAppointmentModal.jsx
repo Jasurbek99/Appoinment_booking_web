@@ -3,6 +3,7 @@ import { Modal, Btn, Input, Select, Empty, Badge } from './primitives.jsx';
 import { useEmployeeSearch, useFirms } from '../hooks/useEmployees.js';
 import { useCauses } from '../hooks/useCauses.js';
 import { useCreateAppointment } from '../hooks/useAppointments.js';
+import { useUsers } from '../hooks/useUsers.js';
 import { useToast } from '../contexts/ToastProvider.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 import { ApiError } from '../lib/api.js';
@@ -28,7 +29,13 @@ export function NewAppointmentModal({ open, onClose }) {
 
   const { push } = useToast();
   const { data: causes = [] } = useCauses({ kind: 'visit' });
+  const { data: users = [] } = useUsers();
   const create = useCreateAppointment();
+
+  const bossOptions = ['boss1', 'boss2', 'boss3'].map((id) => {
+    const u = users.find((x) => x.role === id);
+    return { id, label: u ? u.displayName : t(`role${id[0].toUpperCase()}${id.slice(1)}`) };
+  });
 
   function reset() {
     setTab('employee');
@@ -156,9 +163,9 @@ export function NewAppointmentModal({ open, onClose }) {
         <div>
           <label className="text-sm text-stone-600">{t('boss')}</label>
           <Select value={bossId} onChange={(e) => setBossId(e.target.value)}>
-            <option value="boss1">{t('roleBoss1')}</option>
-            <option value="boss2">{t('roleBoss2')}</option>
-            <option value="boss3">{t('roleBoss3')}</option>
+            {bossOptions.map((b) => (
+              <option key={b.id} value={b.id}>{b.label}</option>
+            ))}
           </Select>
         </div>
         <div>

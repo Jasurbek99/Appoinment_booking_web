@@ -22,7 +22,18 @@ const schema = z.object({
   EMPLOYEE_DB_USER: z.string().min(1),
   EMPLOYEE_DB_PASSWORD: z.string().min(1),
 
-  CORS_ORIGIN: z.string().min(1).default('http://localhost:5173'),
+  // Comma-separated list of allowed origins. Empty string disables CORS
+  // (use this when frontend and backend share an origin behind nginx).
+  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+
+  // Number of reverse-proxy hops in front of Express. 0 = direct, 1 = one nginx, etc.
+  // Required for correct req.ip and Secure cookie behavior behind a proxy.
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
+
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+
+  // Hard cap on JSON request bodies. Anything larger gets a 413.
+  BODY_LIMIT: z.string().default('100kb'),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -34,6 +45,20 @@ if (!parsed.success) {
 
 const env = parsed.data;
 const isTestRun = process.argv.includes('--test') || env.NODE_ENV === 'test';
+const isProduction = env.NODE_ENV === 'production';
+
+if (isProduction) {
+  const weakSecrets = ['changeme', 'secret', 'replace-with-a-long-random-string-at-least-32-chars'];
+  if (weakSecrets.some((w) => env.JWT_SECRET.toLowerCase().includes(w))) {
+    console.error('JWT_SECRET in production must not contain a placeholder value.');
+    process.exit(1);
+  }
+}
+
+const corsOrigin = env.CORS_ORIGIN
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 export const config = {
   env: env.NODE_ENV,
@@ -58,6 +83,9 @@ export const config = {
     user: env.EMPLOYEE_DB_USER,
     password: env.EMPLOYEE_DB_PASSWORD,
   },
-  corsOrigin: env.CORS_ORIGIN,
-  isProduction: env.NODE_ENV === 'production',
+  corsOrigin,
+  trustProxy: env.TRUST_PROXY,
+  logLevel: env.LOG_LEVEL,
+  bodyLimit: env.BODY_LIMIT,
+  isProduction,
 };
