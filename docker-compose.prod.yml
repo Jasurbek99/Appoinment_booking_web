@@ -1,41 +1,16 @@
-# Production stack: mssql + backend + frontend(nginx).
+# Production stack: backend + frontend(nginx).
 # Usage:
 #   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 #
+# The appointments database is an external MSSQL server reachable from this
+# host on port 1433. Configure DB_SERVER / DB_USER / DB_PASSWORD in
+# .env.production. This stack does not run a database container.
+#
 # Notes:
-#   * MSSQL has no host port mapping — only the backend reaches it on the
-#     internal network. Bind a host port only for emergency DBA access.
 #   * Frontend container is the only public-facing service; put a host nginx
 #     or Traefik in front of it for TLS termination.
-#   * For HA / cloud: replace the mssql service with a managed database and
-#     remove that block + its volume.
 
 services:
-  # Bundled MSSQL — only starts when the "bundled-db" compose profile is
-  # active. When you point DB_SERVER at an external production database,
-  # leave COMPOSE_PROFILES unset and this service is skipped entirely.
-  mssql:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: appointments-mssql
-    profiles: ["bundled-db"]
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-}"
-      MSSQL_PID: "Developer"
-    volumes:
-      - mssql-data:/var/opt/mssql
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -No -Q "SELECT 1" || exit 1
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
-    restart: unless-stopped
-    networks:
-      - app
-
   backend:
     build:
       context: ./backend
@@ -45,14 +20,11 @@ services:
       PORT: 3000
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
       BCRYPT_ROUNDS: "${BCRYPT_ROUNDS:-12}"
-      # DB_SERVER defaults to the bundled mssql container's hostname. Override
-      # with the prod database IP/hostname in .env.production when using an
-      # external DB (and leave COMPOSE_PROFILES unset so mssql isn't started).
-      DB_SERVER: "${DB_SERVER:-mssql}"
+      DB_SERVER: "${DB_SERVER:?DB_SERVER must be set to the external MSSQL host}"
       DB_PORT: "${DB_PORT:-1433}"
       DB_NAME: "${DB_NAME:-appointments}"
       DB_NAME_TEST: "${DB_NAME_TEST:-appointments_test}"
-      DB_USER: "${DB_USER:-sa}"
+      DB_USER: "${DB_USER:?DB_USER must be set}"
       DB_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD must be set}"
       INITIAL_SECRETARY_PASSWORD: "${INITIAL_SECRETARY_PASSWORD:-}"
       EMPLOYEE_DB_SERVER: "${EMPLOYEE_DB_SERVER:?EMPLOYEE_DB_SERVER must be set}"
@@ -64,9 +36,6 @@ services:
       TRUST_PROXY: "${TRUST_PROXY:-1}"
       LOG_LEVEL: "${LOG_LEVEL:-info}"
       BODY_LIMIT: "${BODY_LIMIT:-100kb}"
-    # No hard depends_on: the bundled mssql is profile-gated (may not be
-    # running), and external DBs are out of compose's control entirely.
-    # The deploy script's /api/health polling enforces readiness instead.
     restart: unless-stopped
     networks:
       - app
@@ -89,9 +58,6 @@ services:
     restart: unless-stopped
     networks:
       - app
-
-volumes:
-  mssql-data:
 
 networks:
   app:

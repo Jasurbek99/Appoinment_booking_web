@@ -1,8 +1,10 @@
 # Production deployment
 
-Docker-based deployment for the appointment-booking app. The stack is three
-containers on one host: MSSQL, the Node backend, and an nginx container that
-serves the SPA and reverse-proxies `/api` and `/socket.io` to the backend.
+Docker-based deployment for the appointment-booking app. The stack is two
+containers on one host: the Node backend and an nginx container that serves
+the SPA and reverse-proxies `/api` and `/socket.io` to the backend. The
+MSSQL database is **external** — already running on a separate server. The
+stack does not run a database container.
 
 ## What's in scope here
 
@@ -21,8 +23,9 @@ This document covers what was hardened for production:
   there is no DB-level trigger or restricted DB account enforcing that. Add
   a trigger or run the backend under a DB user with no `UPDATE`/`DELETE` on
   this table before you go live.
-- **Backups.** No backup automation here. Schedule SQL Server backups
-  (full + log) to off-host storage and test the restore.
+- **Backups.** Backups are the responsibility of whoever owns the external
+  MSSQL server — schedule full + log backups to off-host storage and test
+  the restore.
 - **Error tracking** (Sentry, etc.) and an external log sink. The app emits
   JSON to stdout — point your container runtime at whatever log aggregator
   you use.
@@ -45,7 +48,9 @@ is a no-op. Under the hood it:
 2. Refuses to run if `JWT_SECRET` still has the placeholder value.
 3. `git fetch && git reset --hard origin/<current-branch>` (skip with `SKIP_PULL=1`).
 4. `docker compose build` + `up -d --remove-orphans`.
-5. Waits for the MSSQL healthcheck to pass.
+5. Waits for the backend container's healthcheck to pass — that healthcheck
+   pings `/api/health`, which in turn pings the external database, so it
+   covers DB reachability too.
 6. Runs `node src/db/migrate.js` inside the backend container.
 7. Polls `/api/health` until it returns OK, then exits 0.
 
@@ -73,7 +78,11 @@ logs already printed.
    - `JWT_SECRET` — must be a real 32+ char random string. Generate:
      `node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"`
      (The backend refuses placeholder strings like `replace-with-...` in production.)
-   - `MSSQL_SA_PASSWORD`, `DB_PASSWORD` — strong, satisfy SQL Server's policy.
+   - `DB_SERVER` — hostname or IP of the external MSSQL server, reachable
+     from this Docker host.
+   - `DB_USER` / `DB_PASSWORD` — credentials that exist on that server and
+     have rights on the `appointments` database (or `CREATE DATABASE` on
+     first migrate).
    - `EMPLOYEE_DB_*` — your HR directory database creds.
    - `CORS_ORIGIN=` — leave empty for the default single-origin layout. Only
      set this if you serve the frontend from a different hostname than the API.
@@ -118,29 +127,17 @@ already on stderr — paste them when asking for help.
 To deploy a specific commit/branch (e.g. a hotfix branch) without pulling
 from origin, `git checkout` it first then run `SKIP_PULL=1 bash scripts/deploy.sh`.
 
-## Database: bundled vs external
+## Database
 
-The stack runs in one of two database modes, chosen by `COMPOSE_PROFILES`
-in `.env.production`:
+The appointments database is an external MSSQL server. Before deploying,
+verify from the Docker host:
 
-| Mode | `COMPOSE_PROFILES` | `DB_SERVER` | What runs |
-|---|---|---|---|
-| Bundled (default for greenfield) | `bundled-db` | `mssql` | mssql + backend + frontend |
-| External (existing prod DB) | _(empty)_ | prod DB IP/hostname | backend + frontend only |
-
-In **external** mode the bundled mssql service is skipped entirely — the
-backend connects directly to your production database server. Things to
-check before switching:
-
-- The deploy host can reach the prod DB IP on port 1433 (`nc -zv <ip> 1433`).
-- The DB account in `DB_USER`/`DB_PASSWORD` exists on the prod server and
-  has `CREATE DATABASE` rights on first migrate (or the `appointments`
-  database already exists and the account has `db_owner` on it).
+- Network reachability: `nc -zv $DB_SERVER 1433`.
+- The DB account in `DB_USER`/`DB_PASSWORD` exists on the server and either
+  has `CREATE DATABASE` rights (for first migrate) or the `appointments`
+  database already exists with that account holding `db_owner`.
 - The `EMPLOYEE_DB_*` account exists on the HR database, read-only.
-- The prod DB's firewall accepts connections from the deploy host's IP.
-
-Switching modes after the fact is non-trivial — you'd need to export and
-re-import data. Pick one mode at the start and stick with it.
+- The DB server's firewall accepts connections from this Docker host.
 
 ## Port layout
 
@@ -150,7 +147,6 @@ Only one host port is bound:
 |---|---|---|---|
 | frontend (nginx) | 80 | `FRONTEND_PORT` (default 8088) | SPA + reverse proxy to backend |
 | backend (node)   | 3000 | — (internal only) | API + sockets |
-| mssql            | 1433 | — (internal only) | Database |
 
 Pick `FRONTEND_PORT` from a free port on the host (`sudo ss -tuln`). Common
 choices:
@@ -210,7 +206,7 @@ through more layers, set `TRUST_PROXY` to the number of hops.
       changed via the UI and removed from the env file.
 - [ ] TLS is terminating in front of the frontend container; HTTP→HTTPS redirect set.
 - [ ] `appointment_history` append-only enforcement is in place at the DB level.
-- [ ] MSSQL backups are scheduled and one restore drill has been completed.
+- [ ] Backups on the external MSSQL server are scheduled and one restore drill has been completed.
 - [ ] The host nginx (or whatever terminates TLS) sets `X-Forwarded-Proto`
       and `TRUST_PROXY` matches the hop count.
 - [ ] Container logs are flowing to your log aggregator.
