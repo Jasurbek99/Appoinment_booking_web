@@ -67,6 +67,8 @@
   "actionReject": "отклонил",
   "actionInvite": "пригласил",
   "actionComplete": "завершил",
+  "actionDelete": "удалил",
+  "deleteConfirm": "Удалить эту заявку? Запись останется в журнале действий.",
   "notif_newRequest": "Новая заявка",
   "notif_approved": "Заявка одобрена",
   "notif_rejected": "Заявка отклонена",

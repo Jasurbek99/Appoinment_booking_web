@@ -22,6 +22,7 @@ statsRouter.get('/boss', requireAuth, requireBoss, async (req, res, next) => {
           SUM(CASE WHEN visit_date = CAST(GETDATE() AS DATE) AND urgent = 1 THEN 1 ELSE 0 END) AS urgent
         FROM appointments
         WHERE boss_id = @boss
+          AND deleted_at IS NULL
       `);
     const row = r.recordset[0] || {};
     res.json({
@@ -94,6 +95,7 @@ statsRouter.get('/visitors', requireAuth, async (req, res, next) => {
           SUM(CASE WHEN boss_id = 'boss3' THEN 1 ELSE 0 END) AS by_boss3
         FROM appointments
         WHERE status <> 'rejected'
+          AND deleted_at IS NULL
           AND visit_date >= @from
           AND visit_date <= @to
           AND (@boss_scope   IS NULL OR boss_id = @boss_scope)

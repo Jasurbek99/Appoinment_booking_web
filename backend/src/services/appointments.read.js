@@ -18,7 +18,9 @@ const HIST_COLUMNS = `
 `;
 
 function buildWhere({ mode, bossId, status, date, lastName }) {
-  const clauses = [];
+  // Every read path hides soft-deleted rows. The DELETE endpoint sets
+  // deleted_at; nothing in the UI should ever see the row again.
+  const clauses = ['a.deleted_at IS NULL'];
   const inputs = [];
 
   if (mode === 'today') {
@@ -50,7 +52,7 @@ function buildWhere({ mode, bossId, status, date, lastName }) {
   }
 
   return {
-    where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '',
+    where: `WHERE ${clauses.join(' AND ')}`,
     inputs,
   };
 }
@@ -113,7 +115,7 @@ export async function getAppointmentRow(id) {
   const r = await pool
     .request()
     .input('id', sql.Int, id)
-    .query(`SELECT ${APPT_COLUMNS} FROM appointments a WHERE a.id = @id`);
+    .query(`SELECT ${APPT_COLUMNS} FROM appointments a WHERE a.id = @id AND a.deleted_at IS NULL`);
   return r.recordset[0] || null;
 }
 
@@ -124,7 +126,7 @@ export async function loadFullDTO(id, { employeeLookup = null } = {}) {
   const apptRes = await pool
     .request()
     .input('id', sql.Int, id)
-    .query(`SELECT ${APPT_COLUMNS} FROM appointments a WHERE a.id = @id`);
+    .query(`SELECT ${APPT_COLUMNS} FROM appointments a WHERE a.id = @id AND a.deleted_at IS NULL`);
   const row = apptRes.recordset[0];
   if (!row) return null;
 

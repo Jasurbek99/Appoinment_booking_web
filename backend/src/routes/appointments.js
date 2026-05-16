@@ -127,6 +127,18 @@ appointmentsRouter.patch('/:id/invite', transitionRoute('invite'));
 appointmentsRouter.patch('/:id/complete', transitionRoute('complete'));
 appointmentsRouter.patch('/:id/reschedule', transitionRoute('reschedule', rescheduleSchema));
 
+appointmentsRouter.delete('/:id', requireStaff, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) throw new ValidationError({ id: ['must be integer'] });
+    const result = await writeSvc.softDelete({ id, actor: req.user });
+    emitAppointmentEvent(req.app.get('io'), 'deleted', { id: result.id, bossId: result.bossId });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 appointmentsRouter.get('/:id/history', async (req, res, next) => {
   try {
     const id = Number(req.params.id);

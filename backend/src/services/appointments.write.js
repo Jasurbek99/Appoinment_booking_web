@@ -77,6 +77,7 @@ export async function create({ input, actor, force = false, employeeLookup = nul
         SELECT TOP 1 id, status FROM appointments
         WHERE visit_date = @date AND boss_id = @boss_id
           AND status IN ('pending','approved','invited')
+          AND deleted_at IS NULL
           AND visitor_type = 'employee' AND employee_id = @employee_id
       `;
     } else if (input.visitor?.firstName && input.visitor?.lastName) {
@@ -86,6 +87,7 @@ export async function create({ input, actor, force = false, employeeLookup = nul
         SELECT TOP 1 id, status FROM appointments
         WHERE visit_date = @date AND boss_id = @boss_id
           AND status IN ('pending','approved','invited')
+          AND deleted_at IS NULL
           AND visitor_type = @visitor_type
           AND visitor_first_name = @first AND visitor_last_name = @last
       `;
@@ -157,9 +159,10 @@ export async function transition({ id, action, actor, note, causeId, newDate, em
     // Lock the row to serialize concurrent transitions.
     const cur = await new sql.Request(tx)
       .input('id', sql.Int, id)
-      .query(`SELECT id, status, boss_id, visit_date FROM appointments WITH (UPDLOCK, ROWLOCK) WHERE id = @id`);
+      .query(`SELECT id, status, boss_id, visit_date, deleted_at FROM appointments WITH (UPDLOCK, ROWLOCK) WHERE id = @id`);
     if (cur.recordset.length === 0) throw new NotFoundError();
     const row = cur.recordset[0];
+    if (row.deleted_at) throw new NotFoundError();
 
     // Authorization: approve/reject/invite/reschedule require own-boss; complete is broader.
     if (action === 'approve' || action === 'reject' || action === 'invite' || action === 'reschedule') {
@@ -231,6 +234,55 @@ export async function transition({ id, action, actor, note, causeId, newDate, em
   return loadFullDTO(id, { employeeLookup });
 }
 
+// Staff-only soft delete. Only 'pending' rows can be removed — once a boss
+// has acted on it, the row carries a decision that must remain visible in
+// the audit log. The appointment row is kept (so its history rows still
+// resolve) and a 'delete' history entry is written in the same transaction.
+// Returns the bossId so the route layer can fan out a deletion event to
+// the right room.
+export async function softDelete({ id, actor }) {
+  if (!STAFF_ROLES.has(actor.role)) throw new ForbiddenError();
+
+  return withTransaction(async (tx) => {
+    const cur = await new sql.Request(tx)
+      .input('id', sql.Int, id)
+      .query(
+        `SELECT id, status, boss_id, deleted_at
+           FROM appointments WITH (UPDLOCK, ROWLOCK)
+          WHERE id = @id`,
+      );
+    if (cur.recordset.length === 0) throw new NotFoundError();
+    const row = cur.recordset[0];
+    if (row.deleted_at) throw new NotFoundError();
+    if (row.status !== 'pending') {
+      throw new ConflictError(
+        `cannot delete from ${row.status}`,
+        'invalid_transition',
+        { from: row.status, action: 'delete' },
+      );
+    }
+
+    await new sql.Request(tx)
+      .input('id', sql.Int, id)
+      .input('user_id', sql.NVarChar(50), actor.id)
+      .query(
+        `UPDATE appointments
+            SET deleted_at = SYSUTCDATETIME(), deleted_by_user_id = @user_id
+          WHERE id = @id`,
+      );
+
+    await new sql.Request(tx)
+      .input('id', sql.Int, id)
+      .input('user_id', sql.NVarChar(50), actor.id)
+      .query(
+        `INSERT INTO appointment_history (appointment_id, action, user_id)
+         VALUES (@id, 'delete', @user_id)`,
+      );
+
+    return { id, bossId: row.boss_id };
+  });
+}
+
 // Boss-only "clear my calendar" — shift every approved/invited appointment
 // dated today or later by N days. One transaction; one history row per moved
 // appointment with the same JSON note shape as single-item reschedule plus a
@@ -259,6 +311,7 @@ export async function bulkReschedule({
         SELECT id, visit_date FROM appointments WITH (UPDLOCK, ROWLOCK)
         WHERE boss_id = @boss_id
           AND status IN ('pending','approved','invited')
+          AND deleted_at IS NULL
         ORDER BY id
       `);
 

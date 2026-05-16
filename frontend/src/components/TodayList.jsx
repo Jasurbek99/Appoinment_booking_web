@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { useAppointments, useTransitionAppointment } from '../hooks/useAppointments.js';
+import {
+  useAppointments,
+  useTransitionAppointment,
+  useDeleteAppointment,
+} from '../hooks/useAppointments.js';
 import { useLiveAppointments } from '../hooks/useAppointmentEvents.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useToast } from '../contexts/ToastProvider.jsx';
@@ -14,6 +18,7 @@ export function TodayList({ filter }) {
   const { push } = useToast();
   const { data, isLoading, error } = useAppointments({ mode: 'today' });
   const transition = useTransitionAppointment();
+  const del = useDeleteAppointment();
   const [rejectFor, setRejectFor] = useState(null);
   useLiveAppointments();
 
@@ -27,6 +32,16 @@ export function TodayList({ filter }) {
   const handleAction = (action, appt) => {
     if (action === 'reject') {
       setRejectFor(appt);
+      return;
+    }
+    if (action === 'delete') {
+      // window.confirm is enough here — this is staff undoing their own
+      // mistake on a pending entry, not a destructive action on shared state.
+      if (!window.confirm(t('deleteConfirm'))) return;
+      del.mutate(appt.id, {
+        onError: (err) =>
+          push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
+      });
       return;
     }
     transition.mutate(
@@ -56,7 +71,7 @@ export function TodayList({ filter }) {
             appt={a}
             role={user.role}
             onAction={handleAction}
-            busy={transition.isPending}
+            busy={transition.isPending || del.isPending}
           />
         ))}
       </div>

@@ -5,7 +5,7 @@ import { Input, Select, Empty } from './primitives.jsx';
 import { fmtTime, fmtDate } from '../lib/format.js';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 
-const ACTION_IDS = ['', 'create', 'approve', 'reject', 'reschedule', 'invite', 'complete'];
+const ACTION_IDS = ['', 'create', 'approve', 'reject', 'reschedule', 'invite', 'complete', 'delete'];
 
 function actionLabel(id, t) {
   if (!id) return t('allActions');
@@ -15,6 +15,7 @@ function actionLabel(id, t) {
   if (id === 'reschedule') return t('actionReschedule');
   if (id === 'invite') return t('actionInvite');
   if (id === 'complete') return t('actionComplete');
+  if (id === 'delete') return t('actionDelete');
   return id;
 }
 

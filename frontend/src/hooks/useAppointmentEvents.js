@@ -47,10 +47,28 @@ export function useLiveAppointments({ todayMatcher = ALWAYS } = {}) {
       invited: make('invited', 'notif_invited'),
       completed: make('completed', 'notif_completed', 'success'),
       rescheduled: make('rescheduled', 'notif_rescheduled'),
+      // Soft-delete arrives as a minimal { id, bossId } payload; drop the
+      // matching row from every cached list. Silent — no notification,
+      // since this is undo of a secretarial mistake, not an event anyone
+      // else needs to be alerted about.
+      deleted: ({ id }) => removeFromCache(qc, id),
     };
   }, [qc, todayMatcher, notify, t, user]);
 
   useAppointmentEvents(handlers);
+}
+
+function removeFromCache(qc, id) {
+  for (const mode of ['today', 'future']) {
+    qc.setQueryData([KEY, mode], (cur) => {
+      if (!Array.isArray(cur)) return cur;
+      const idx = cur.findIndex((a) => a.id === id);
+      if (idx === -1) return cur;
+      const next = cur.slice();
+      next.splice(idx, 1);
+      return next;
+    });
+  }
 }
 
 function applyToCache(qc, dto, matcher) {

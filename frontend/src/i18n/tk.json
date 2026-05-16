@@ -68,6 +68,8 @@
   "actionReject": "ret etdi",
   "actionInvite": "çagyrdy",
   "actionComplete": "tamamlady",
+  "actionDelete": "pozdy",
+  "deleteConfirm": "Bu haýyşy pozmaly mi? Ýazgy hereket žurnalynda galar.",
   "notif_newRequest": "Täze haýyş",
   "notif_approved": "Haýyş tassyklandy",
   "notif_rejected": "Haýyş ret edildi",

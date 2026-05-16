@@ -11,7 +11,7 @@ const querySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   user_id: z.string().max(50).optional(),
-  action: z.enum(['create', 'approve', 'reject', 'invite', 'complete', 'reschedule']).optional(),
+  action: z.enum(['create', 'approve', 'reject', 'invite', 'complete', 'reschedule', 'delete']).optional(),
 });
 
 const HARD_LIMIT = 500;

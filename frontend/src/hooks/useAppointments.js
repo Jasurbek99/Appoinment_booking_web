@@ -32,6 +32,14 @@ export function useBulkReschedule() {
   });
 }
 
+export function useDeleteAppointment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/api/appointments/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
 export function useTransitionAppointment() {
   const qc = useQueryClient();
   return useMutation({

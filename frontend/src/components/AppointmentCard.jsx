@@ -76,6 +76,24 @@ function Actions({ appt, role, onAction, busy }) {
   const isStaff = ['secretary', 'assistant1', 'assistant2', 'assistant3'].includes(role);
   const buttons = [];
 
+  // Staff can delete a pending entry created in error. The button is small
+  // and ghost-styled with rose accents so it doesn't compete with the
+  // boss's approve/reject buttons but is clearly destructive.
+  if (appt.status === 'pending' && isStaff) {
+    buttons.push(
+      <Btn
+        key="delete"
+        size="sm"
+        kind="ghost"
+        onClick={() => onAction('delete', appt)}
+        disabled={busy}
+        className="text-rose-700 border-rose-200 hover:bg-rose-50"
+      >
+        {t('delete')}
+      </Btn>,
+    );
+  }
+
   if (appt.status === 'pending' && isOwnBoss) {
     buttons.push(
       <Btn key="approve" size="sm" kind="success" onClick={() => onAction('approve', appt)} disabled={busy}>
