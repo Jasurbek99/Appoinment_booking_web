@@ -7,7 +7,7 @@ import { useI18n } from '../contexts/I18nProvider.jsx';
 
 const ACTION_IDS = ['', 'create', 'approve', 'reject', 'reschedule', 'invite', 'complete', 'delete'];
 
-function actionLabel(id, t) {
+function statusLabel(id, t) {
   if (!id) return t('allActions');
   if (id === 'create') return t('actionCreate');
   if (id === 'approve') return t('actionApprove');
@@ -17,6 +17,13 @@ function actionLabel(id, t) {
   if (id === 'complete') return t('actionComplete');
   if (id === 'delete') return t('actionDelete');
   return id;
+}
+
+function bossLabel(id, t) {
+  if (id === 'boss1') return t('roleBoss1');
+  if (id === 'boss2') return t('roleBoss2');
+  if (id === 'boss3') return t('roleBoss3');
+  return id || '';
 }
 
 function formatNote(action, note) {
@@ -60,7 +67,7 @@ export function JournalTable({ hideUserFilter = false }) {
         {!hideUserFilter && <UserFilter value={filters.user_id || ''} onChange={(v) => setFilter('user_id', v)} />}
         <Select value={filters.action || ''} onChange={(e) => setFilter('action', e.target.value)}>
           {ACTION_IDS.map((id) => (
-            <option key={id || 'all'} value={id}>{actionLabel(id, t)}</option>
+            <option key={id || 'all'} value={id}>{statusLabel(id, t)}</option>
           ))}
         </Select>
       </header>
@@ -75,7 +82,7 @@ export function JournalTable({ hideUserFilter = false }) {
               <tr>
                 <th className="text-left px-3 py-2">{t('when')}</th>
                 <th className="text-left px-3 py-2">{t('who')}</th>
-                <th className="text-left px-3 py-2">{t('what')}</th>
+                <th className="text-left px-3 py-2">{t('status')}</th>
                 <th className="text-left px-3 py-2">{t('appointmentNo')}</th>
                 <th className="text-left px-3 py-2">{t('toWhom')}</th>
               </tr>
@@ -87,23 +94,20 @@ export function JournalTable({ hideUserFilter = false }) {
                     {fmtDate(row.at)} {fmtTime(row.at)}
                   </td>
                   <td className="px-3 py-2">
-                    {row.user.displayName || row.user.id}
-                    {row.user.deleted && <span className="text-xs text-stone-400 ml-1">({t('deletedMark')})</span>}
+                    {row.appointment.visitorName || `emp#${row.appointment.employeeId}`}
+                    {row.appointment.visitorCompany && (
+                      <div className="text-xs text-stone-500">{row.appointment.visitorCompany}</div>
+                    )}
                   </td>
                   <td className="px-3 py-2">
-                    {actionLabel(row.action, t)}
+                    {statusLabel(row.action, t)}
                     {(() => {
                       const formatted = formatNote(row.action, row.note);
                       return formatted ? <div className="text-xs text-stone-500">{formatted}</div> : null;
                     })()}
                   </td>
                   <td className="px-3 py-2 text-stone-500">#{row.appointment.id}</td>
-                  <td className="px-3 py-2">
-                    {row.appointment.visitorName || `emp#${row.appointment.employeeId}`}
-                    {row.appointment.visitorCompany && (
-                      <div className="text-xs text-stone-500">{row.appointment.visitorCompany}</div>
-                    )}
-                  </td>
+                  <td className="px-3 py-2">{bossLabel(row.appointment.bossId, t)}</td>
                 </tr>
               ))}
             </tbody>
