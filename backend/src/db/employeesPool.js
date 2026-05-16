@@ -1,17 +1,9 @@
 import sql from 'mssql';
 import { config } from '../config.js';
+import { buildMssqlConnectionOptions } from './connectOptions.js';
 
 const poolConfig = {
-  server: config.employeeDb.server,
-  port: config.employeeDb.port,
-  database: config.employeeDb.database,
-  user: config.employeeDb.user,
-  password: config.employeeDb.password,
-  options: {
-    encrypt: false,
-    trustServerCertificate: true,
-    enableArithAbort: true,
-  },
+  ...buildMssqlConnectionOptions(config.employeeDb),
   pool: {
     max: 5,
     min: 0,
