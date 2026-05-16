@@ -16,7 +16,7 @@ const COOKIE_NAME = 'token';
 const cookieOptions = {
   httpOnly: true,
   sameSite: 'lax',
-  secure: config.isProduction,
+  secure: config.cookieSecure,
   maxAge: 24 * 60 * 60 * 1000,
   path: '/',
 };

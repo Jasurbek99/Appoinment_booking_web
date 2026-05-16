@@ -34,6 +34,14 @@ const schema = z.object({
 
   // Hard cap on JSON request bodies. Anything larger gets a 413.
   BODY_LIMIT: z.string().default('100kb'),
+
+  // Sets the Secure flag on auth cookies. Defaults to true in production
+  // (HTTPS expected); set to "false" only when serving over plain HTTP on
+  // a trusted network, since the browser drops Secure cookies on http://.
+  COOKIE_SECURE: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === 'true')),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -87,5 +95,6 @@ export const config = {
   trustProxy: env.TRUST_PROXY,
   logLevel: env.LOG_LEVEL,
   bodyLimit: env.BODY_LIMIT,
+  cookieSecure: env.COOKIE_SECURE ?? isProduction,
   isProduction,
 };
