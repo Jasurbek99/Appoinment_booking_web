@@ -10,7 +10,6 @@ export const journalRouter = Router();
 const querySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  user_id: z.string().max(50).optional(),
   action: z.enum(['create', 'approve', 'reject', 'invite', 'complete', 'reschedule', 'delete']).optional(),
 });
 
@@ -35,24 +34,25 @@ journalRouter.get('/', requireAuth, async (req, res, next) => {
     const r = await pool.request()
       .input('from', sql.Date, from)
       .input('to', sql.Date, to)
-      .input('user_id', sql.NVarChar(50), q.user_id || null)
       .input('action', sql.NVarChar(20), q.action || null)
       .input('boss_scope', sql.NVarChar(20), bossScope)
       .input('limit', sql.Int, HARD_LIMIT)
       .query(`
         SELECT TOP (@limit)
-          h.id, h.appointment_id, h.action, h.user_id, h.at, h.note,
-          u.display_name AS user_display_name, u.role AS user_role, u.deleted_at AS user_deleted_at,
+          l.id, l.appointment_id, l.action, l.at, l.note,
           a.boss_id, a.visitor_first_name, a.visitor_last_name, a.visitor_company,
           a.visitor_type, a.employee_id, a.cause_id, a.status
-        FROM appointment_history h
-        LEFT JOIN users u ON u.id = h.user_id
-        LEFT JOIN appointments a ON a.id = h.appointment_id
-        WHERE h.at >= @from AND h.at < DATEADD(day, 1, @to)
-          AND (@user_id IS NULL OR h.user_id = @user_id)
-          AND (@action  IS NULL OR h.action  = @action)
+        FROM (
+          SELECT h.*,
+                 ROW_NUMBER() OVER (PARTITION BY h.appointment_id ORDER BY h.at DESC, h.id DESC) AS rn
+          FROM appointment_history h
+          WHERE h.at >= @from AND h.at < DATEADD(day, 1, @to)
+        ) l
+        LEFT JOIN appointments a ON a.id = l.appointment_id
+        WHERE l.rn = 1
+          AND (@action     IS NULL OR l.action  = @action)
           AND (@boss_scope IS NULL OR a.boss_id = @boss_scope)
-        ORDER BY h.at DESC
+        ORDER BY l.at DESC
       `);
 
     res.json(r.recordset.map(toRow));
@@ -66,12 +66,6 @@ function toRow(r) {
     id: Number(r.id),
     at: r.at instanceof Date ? r.at.toISOString() : r.at,
     action: r.action,
-    user: {
-      id: r.user_id,
-      displayName: r.user_display_name,
-      role: r.user_role,
-      deleted: !!r.user_deleted_at,
-    },
     appointment: {
       id: r.appointment_id,
       bossId: r.boss_id,

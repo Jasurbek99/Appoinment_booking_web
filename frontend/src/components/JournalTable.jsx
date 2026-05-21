@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useJournal } from '../hooks/useJournal.js';
-import { useUsers } from '../hooks/useUsers.js';
 import { Input, Select, Empty } from './primitives.jsx';
 import { fmtTime, fmtDate } from '../lib/format.js';
 import { useI18n } from '../contexts/I18nProvider.jsx';
@@ -42,7 +41,7 @@ function formatNote(action, note) {
   return note;
 }
 
-export function JournalTable({ hideUserFilter = false }) {
+export function JournalTable() {
   const { t } = useI18n();
   const [filters, setFilters] = useState({});
   const { data = [], isLoading } = useJournal(filters);
@@ -51,7 +50,7 @@ export function JournalTable({ hideUserFilter = false }) {
 
   return (
     <section>
-      <header className={'grid gap-3 mb-4 ' + (hideUserFilter ? 'md:grid-cols-3' : 'md:grid-cols-4')}>
+      <header className="grid gap-3 mb-4 md:grid-cols-3">
         <Input
           type="date"
           value={filters.from || ''}
@@ -64,7 +63,6 @@ export function JournalTable({ hideUserFilter = false }) {
           onChange={(e) => setFilter('to', e.target.value)}
           placeholder={t('to')}
         />
-        {!hideUserFilter && <UserFilter value={filters.user_id || ''} onChange={(v) => setFilter('user_id', v)} />}
         <Select value={filters.action || ''} onChange={(e) => setFilter('action', e.target.value)}>
           {ACTION_IDS.map((id) => (
             <option key={id || 'all'} value={id}>{statusLabel(id, t)}</option>
@@ -115,18 +113,5 @@ export function JournalTable({ hideUserFilter = false }) {
         </div>
       )}
     </section>
-  );
-}
-
-function UserFilter({ value, onChange }) {
-  const { t } = useI18n();
-  const { data: users = [] } = useUsers();
-  return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">{t('allUsers')}</option>
-      {users.map((u) => (
-        <option key={u.id} value={u.id}>{u.displayName}</option>
-      ))}
-    </Select>
   );
 }

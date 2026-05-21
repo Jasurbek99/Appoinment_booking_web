@@ -209,7 +209,7 @@ function AnalyticsStub() {
         <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-3">
           {t('journal')}
         </h2>
-        <JournalTable hideUserFilter />
+        <JournalTable />
       </section>
       <section>
         <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-3">
