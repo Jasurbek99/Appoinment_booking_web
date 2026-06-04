@@ -2,15 +2,13 @@ import { useState, useMemo } from 'react';
 import { TopBar } from '../components/TopBar.jsx';
 import {
   useAppointments,
-  useTransitionAppointment,
   useBulkReschedule,
 } from '../hooks/useAppointments.js';
 import { useLiveAppointments } from '../hooks/useAppointmentEvents.js';
+import { useAppointmentActions } from '../hooks/useAppointmentActions.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useToast } from '../contexts/ToastProvider.jsx';
 import { AppointmentCard } from '../components/AppointmentCard.jsx';
-import { RejectModal } from '../components/RejectModal.jsx';
-import { RescheduleModal } from '../components/RescheduleModal.jsx';
 import { BulkRescheduleModal } from '../components/BulkRescheduleModal.jsx';
 import { Empty, Btn } from '../components/primitives.jsx';
 import { BossAnalytics } from '../components/BossAnalytics.jsx';
@@ -61,12 +59,14 @@ function BossToday() {
   const { push } = useToast();
   const { data, isLoading, error } = useAppointments({ mode: 'today' });
   const { data: futureData } = useAppointments({ mode: 'future' });
-  const transition = useTransitionAppointment();
+  const { handleAction, modals, busy } = useAppointmentActions();
   const bulkReschedule = useBulkReschedule();
-  const [rejectFor, setRejectFor] = useState(null);
-  const [rescheduleFor, setRescheduleFor] = useState(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   useLiveAppointments();
+
+  // boss1 delegates everything to the staff, so he gets no action controls —
+  // not the per-card buttons (handled in AppointmentCard) and not bulk reschedule.
+  const isDelegatedBoss = user.role === 'boss1';
 
   const { pending, queue } = useMemo(() => {
     const list = data || [];
@@ -99,32 +99,6 @@ function BossToday() {
   if (isLoading) return <div className="text-stone-500 text-sm">…</div>;
   if (error) return <Empty>{t('loadFailed')}</Empty>;
 
-  const handleAction = (action, appt) => {
-    if (action === 'reject') return setRejectFor(appt);
-    if (action === 'reschedule') return setRescheduleFor(appt);
-    transition.mutate(
-      { id: appt.id, action },
-      { onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }) },
-    );
-  };
-  const submitReject = ({ causeId, reason }) => {
-    transition.mutate(
-      { id: rejectFor.id, action: 'reject', reason, causeId },
-      {
-        onSuccess: () => setRejectFor(null),
-        onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
-      },
-    );
-  };
-  const submitReschedule = ({ date, causeId, reason }) => {
-    transition.mutate(
-      { id: rescheduleFor.id, action: 'reschedule', date, causeId, reason },
-      {
-        onSuccess: () => setRescheduleFor(null),
-        onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
-      },
-    );
-  };
   const submitBulkReschedule = ({ shiftDays, causeId, reason }) => {
     bulkReschedule.mutate(
       { shiftDays, causeId, reason },
@@ -141,40 +115,33 @@ function BossToday() {
 
   return (
     <>
-      <div className="flex justify-end mb-4">
-        <Btn
-          kind="ghost"
-          size="sm"
-          onClick={() => setBulkOpen(true)}
-          disabled={affectedCount === 0 || bulkReschedule.isPending}
-        >
-          {t('bulkReschedule')}
-          {affectedCount > 0 ? ` (${affectedCount})` : ''}
-        </Btn>
-      </div>
+      {!isDelegatedBoss && (
+        <div className="flex justify-end mb-4">
+          <Btn
+            kind="ghost"
+            size="sm"
+            onClick={() => setBulkOpen(true)}
+            disabled={affectedCount === 0 || bulkReschedule.isPending}
+          >
+            {t('bulkReschedule')}
+            {affectedCount > 0 ? ` (${affectedCount})` : ''}
+          </Btn>
+        </div>
+      )}
       <div className="grid gap-6 md:grid-cols-2">
-        <Column title={t('pendingDecision')} items={pending} role={user.role} onAction={handleAction} busy={transition.isPending} />
-        <Column title={t('awaitingPickup')} items={queue} role={user.role} onAction={handleAction} busy={transition.isPending} />
+        <Column title={t('pendingDecision')} items={pending} role={user.role} onAction={handleAction} busy={busy} />
+        <Column title={t('awaitingPickup')} items={queue} role={user.role} onAction={handleAction} busy={busy} />
       </div>
-      <RejectModal
-        open={!!rejectFor}
-        onClose={() => setRejectFor(null)}
-        onConfirm={submitReject}
-        busy={transition.isPending}
-      />
-      <RescheduleModal
-        open={!!rescheduleFor}
-        onClose={() => setRescheduleFor(null)}
-        onConfirm={submitReschedule}
-        busy={transition.isPending}
-      />
-      <BulkRescheduleModal
-        open={bulkOpen}
-        onClose={() => setBulkOpen(false)}
-        onConfirm={submitBulkReschedule}
-        busy={bulkReschedule.isPending}
-        queueCount={affectedCount}
-      />
+      {modals}
+      {!isDelegatedBoss && (
+        <BulkRescheduleModal
+          open={bulkOpen}
+          onClose={() => setBulkOpen(false)}
+          onConfirm={submitBulkReschedule}
+          busy={bulkReschedule.isPending}
+          queueCount={affectedCount}
+        />
+      )}
     </>
   );
 }
