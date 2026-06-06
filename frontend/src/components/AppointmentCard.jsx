@@ -70,10 +70,24 @@ export function AppointmentCard({ appt, role, onAction, busy }) {
   );
 }
 
+// Bosses who delegate all decisions to the staff (see backend
+// appointments.write.js DELEGATED_BOSSES). boss1 acts through the secretary,
+// so his own dashboard shows no action buttons and the staff get the full
+// decision set on his appointments instead.
+const DELEGATED_BOSSES = ['boss1'];
+
 function Actions({ appt, role, onAction, busy }) {
   const { t } = useI18n();
+
+  // A delegated boss (boss1) has no action buttons anywhere — he phones the
+  // staff instead of acting in the app himself.
+  if (DELEGATED_BOSSES.includes(role)) return null;
+
   const isOwnBoss = role === appt.bossId;
   const isStaff = ['secretary', 'assistant1', 'assistant2', 'assistant3'].includes(role);
+  // Decision actions (approve/reject/invite/reschedule) belong to the owning
+  // boss — or to the staff when the appointment's boss is delegated.
+  const canDecide = isOwnBoss || (isStaff && DELEGATED_BOSSES.includes(appt.bossId));
   const buttons = [];
 
   // Staff can delete a pending entry created in error. The button is small
@@ -94,7 +108,7 @@ function Actions({ appt, role, onAction, busy }) {
     );
   }
 
-  if (appt.status === 'pending' && isOwnBoss) {
+  if (appt.status === 'pending' && canDecide) {
     buttons.push(
       <Btn key="approve" size="sm" kind="success" onClick={() => onAction('approve', appt)} disabled={busy}>
         {t('approve')}
@@ -107,7 +121,7 @@ function Actions({ appt, role, onAction, busy }) {
       </Btn>,
     );
   }
-  if (appt.status === 'approved' && isOwnBoss) {
+  if (appt.status === 'approved' && canDecide) {
     buttons.push(
       <Btn key="invite" size="sm" kind="info" onClick={() => onAction('invite', appt)} disabled={busy}>
         {t('invite')}

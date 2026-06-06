@@ -29,6 +29,12 @@ const ALLOWED_TRANSITIONS = {
 const BOSS_ROLES = new Set(['boss1', 'boss2', 'boss3']);
 const STAFF_ROLES = new Set(['secretary', 'assistant1', 'assistant2', 'assistant3']);
 
+// Bosses who delegate all decisions to the staff. boss1 phones the secretary
+// to approve/reject/invite/reschedule instead of acting in the app himself, so
+// his dashboard has no action buttons (frontend) and the staff are authorized
+// to decide on his appointments here. Hardcoded by design — see CLAUDE.md.
+const DELEGATED_BOSSES = new Set(['boss1']);
+
 function todayLocalISO() {
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -164,10 +170,13 @@ export async function transition({ id, action, actor, note, causeId, newDate, em
     const row = cur.recordset[0];
     if (row.deleted_at) throw new NotFoundError();
 
-    // Authorization: approve/reject/invite/reschedule require own-boss; complete is broader.
+    // Authorization: approve/reject/invite/reschedule require own-boss — except
+    // for delegated bosses (boss1), where the staff decide on his behalf.
+    // complete is broader (staff or own-boss).
     if (action === 'approve' || action === 'reject' || action === 'invite' || action === 'reschedule') {
-      if (!BOSS_ROLES.has(actor.role)) throw new ForbiddenError();
-      if (actor.role !== row.boss_id) throw new ForbiddenError();
+      const isOwnBoss = BOSS_ROLES.has(actor.role) && actor.role === row.boss_id;
+      const isDelegatedStaff = STAFF_ROLES.has(actor.role) && DELEGATED_BOSSES.has(row.boss_id);
+      if (!isOwnBoss && !isDelegatedStaff) throw new ForbiddenError();
     } else if (action === 'complete') {
       const isOwnBoss = BOSS_ROLES.has(actor.role) && actor.role === row.boss_id;
       const isStaff = STAFF_ROLES.has(actor.role);

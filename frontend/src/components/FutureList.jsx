@@ -1,16 +1,15 @@
-import { useAppointments, useDeleteAppointment } from '../hooks/useAppointments.js';
+import { useAppointments } from '../hooks/useAppointments.js';
+import { useAppointmentActions } from '../hooks/useAppointmentActions.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
-import { useToast } from '../contexts/ToastProvider.jsx';
 import { AppointmentCard } from './AppointmentCard.jsx';
 import { Empty } from './primitives.jsx';
 
 export function FutureList() {
   const { t } = useI18n();
   const { user } = useAuth();
-  const { push } = useToast();
   const { data, isLoading, error } = useAppointments({ mode: 'future' });
-  const del = useDeleteAppointment();
+  const { handleAction, modals, busy } = useAppointmentActions();
 
   if (isLoading) {
     return (
@@ -27,26 +26,20 @@ export function FutureList() {
   if (error) return <Empty>{t('loadFailed')}</Empty>;
   if (!data || data.length === 0) return <Empty>{t('empty')}</Empty>;
 
-  const handleAction = (action, appt) => {
-    if (action !== 'delete') return;
-    if (!window.confirm(t('deleteConfirm'))) return;
-    del.mutate(appt.id, {
-      onError: (err) =>
-        push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
-    });
-  };
-
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {data.map((a) => (
-        <AppointmentCard
-          key={a.id}
-          appt={a}
-          role={user.role}
-          onAction={handleAction}
-          busy={del.isPending}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid gap-3 md:grid-cols-2">
+        {data.map((a) => (
+          <AppointmentCard
+            key={a.id}
+            appt={a}
+            role={user.role}
+            onAction={handleAction}
+            busy={busy}
+          />
+        ))}
+      </div>
+      {modals}
+    </>
   );
 }

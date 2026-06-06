@@ -135,6 +135,28 @@ describe('PATCH state machine', () => {
     expect(r.status).toBe(403);
   });
 
+  it('staff can decide on a delegated boss (boss1) appointment on his behalf', async () => {
+    const sec = await loginAgent(request.agent(app), SECRETARY);
+    const created = (await sec.post('/api/appointments').send(guestPayload({ bossId: 'boss1' }))).body;
+
+    const a = await sec.patch(`/api/appointments/${created.id}/approve`);
+    expect(a.status).toBe(200);
+    expect(a.body.status).toBe('approved');
+    expect(a.body.history.at(-1).action).toBe('approve');
+    expect(a.body.history.at(-1).user.id).toBe(SECRETARY.id);
+
+    const i = await sec.patch(`/api/appointments/${created.id}/invite`);
+    expect(i.status).toBe(200);
+    expect(i.body.status).toBe('invited');
+  });
+
+  it('staff cannot decide on a non-delegated boss (boss2) appointment (403)', async () => {
+    const sec = await loginAgent(request.agent(app), SECRETARY);
+    const created = (await sec.post('/api/appointments').send(guestPayload({ bossId: 'boss2' }))).body;
+    const r = await sec.patch(`/api/appointments/${created.id}/approve`);
+    expect(r.status).toBe(403);
+  });
+
   it('staff can complete any appointment (after approve)', async () => {
     const sec = await loginAgent(request.agent(app), SECRETARY);
     const created = (await sec.post('/api/appointments').send(guestPayload({ bossId: 'boss2' }))).body;

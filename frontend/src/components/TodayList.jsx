@@ -1,25 +1,16 @@
-import { useState } from 'react';
-import {
-  useAppointments,
-  useTransitionAppointment,
-  useDeleteAppointment,
-} from '../hooks/useAppointments.js';
+import { useAppointments } from '../hooks/useAppointments.js';
 import { useLiveAppointments } from '../hooks/useAppointmentEvents.js';
+import { useAppointmentActions } from '../hooks/useAppointmentActions.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
-import { useToast } from '../contexts/ToastProvider.jsx';
 import { useI18n } from '../contexts/I18nProvider.jsx';
 import { AppointmentCard } from './AppointmentCard.jsx';
-import { RejectModal } from './RejectModal.jsx';
 import { Empty } from './primitives.jsx';
 
 export function TodayList({ filter }) {
   const { t } = useI18n();
   const { user } = useAuth();
-  const { push } = useToast();
   const { data, isLoading, error } = useAppointments({ mode: 'today' });
-  const transition = useTransitionAppointment();
-  const del = useDeleteAppointment();
-  const [rejectFor, setRejectFor] = useState(null);
+  const { handleAction, modals, busy } = useAppointmentActions();
   useLiveAppointments();
 
   if (isLoading) return <ListSkeleton />;
@@ -28,39 +19,6 @@ export function TodayList({ filter }) {
   let list = data || [];
   if (filter) list = list.filter(filter);
   if (list.length === 0) return <Empty>{t('empty')}</Empty>;
-
-  const handleAction = (action, appt) => {
-    if (action === 'reject') {
-      setRejectFor(appt);
-      return;
-    }
-    if (action === 'delete') {
-      // window.confirm is enough here — this is staff undoing their own
-      // mistake on a pending entry, not a destructive action on shared state.
-      if (!window.confirm(t('deleteConfirm'))) return;
-      del.mutate(appt.id, {
-        onError: (err) =>
-          push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
-      });
-      return;
-    }
-    transition.mutate(
-      { id: appt.id, action },
-      {
-        onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
-      },
-    );
-  };
-
-  const submitReject = (reason) => {
-    transition.mutate(
-      { id: rejectFor.id, action: 'reject', reason },
-      {
-        onSuccess: () => setRejectFor(null),
-        onError: (err) => push({ kind: 'error', title: t('errorTitle'), message: err?.code || 'unknown' }),
-      },
-    );
-  };
 
   return (
     <>
@@ -71,16 +29,11 @@ export function TodayList({ filter }) {
             appt={a}
             role={user.role}
             onAction={handleAction}
-            busy={transition.isPending || del.isPending}
+            busy={busy}
           />
         ))}
       </div>
-      <RejectModal
-        open={!!rejectFor}
-        onClose={() => setRejectFor(null)}
-        onConfirm={submitReject}
-        busy={transition.isPending}
-      />
+      {modals}
     </>
   );
 }
