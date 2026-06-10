@@ -19,11 +19,14 @@ export function AppointmentCard({ appt, role, onAction, busy }) {
   const visitCause = appt.causeId && appt.causeId !== 'other'
     ? visitCauses.find((c) => c.id === appt.causeId)
     : null;
+  const visitCauseBaseLabel = visitCause
+    ? (lang === 'tk' ? visitCause.label_tk : visitCause.label_ru)
+    : appt.causeId;
   const visitCauseLabel = appt.causeId === 'other'
     ? appt.customCause
-    : visitCause
-      ? (lang === 'tk' ? visitCause.label_tk : visitCause.label_ru)
-      : appt.causeId;
+    : appt.causeId === 'work' && appt.customCause
+      ? `${visitCauseBaseLabel}: ${appt.customCause}`
+      : visitCauseBaseLabel;
   const { data: users = [] } = useUsers({ enabled: !isBossViewer });
   const bossUser = users.find((u) => u.role === appt.bossId);
   const bossLabel = bossUser ? bossUser.displayName : appt.bossId;

@@ -40,7 +40,8 @@ journalRouter.get('/', requireAuth, async (req, res, next) => {
       .query(`
         SELECT TOP (@limit)
           l.id, l.appointment_id, l.action, l.at, l.note,
-          a.boss_id, a.visitor_first_name, a.visitor_last_name, a.visitor_company,
+          a.boss_id, b.display_name AS boss_name,
+          a.visitor_first_name, a.visitor_last_name, a.visitor_company,
           a.visitor_type, a.employee_id, a.cause_id, a.status
         FROM (
           SELECT h.*,
@@ -49,6 +50,7 @@ journalRouter.get('/', requireAuth, async (req, res, next) => {
           WHERE h.at >= @from AND h.at < DATEADD(day, 1, @to)
         ) l
         LEFT JOIN appointments a ON a.id = l.appointment_id
+        LEFT JOIN users b ON b.role = a.boss_id AND b.deleted_at IS NULL
         WHERE l.rn = 1
           AND (@action     IS NULL OR l.action  = @action)
           AND (@boss_scope IS NULL OR a.boss_id = @boss_scope)
@@ -69,6 +71,7 @@ function toRow(r) {
     appointment: {
       id: r.appointment_id,
       bossId: r.boss_id,
+      bossName: r.boss_name || null,
       causeId: r.cause_id,
       status: r.status,
       visitorType: r.visitor_type,

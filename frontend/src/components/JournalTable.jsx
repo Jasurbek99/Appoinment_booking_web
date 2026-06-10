@@ -105,7 +105,7 @@ export function JournalTable() {
                     })()}
                   </td>
                   <td className="px-3 py-2 text-stone-500">#{row.appointment.id}</td>
-                  <td className="px-3 py-2">{bossLabel(row.appointment.bossId, t)}</td>
+                  <td className="px-3 py-2">{row.appointment.bossName || bossLabel(row.appointment.bossId, t)}</td>
                 </tr>
               ))}
             </tbody>

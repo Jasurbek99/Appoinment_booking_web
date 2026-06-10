@@ -37,6 +37,7 @@
   "rejectionReason": "Причина отказа (необязательно)",
   "rejectionLabel": "Причина отказа",
   "customCause": "Опишите причину",
+  "workCause": "Причина",
   "addManually": "Вписать вручную",
   "backToSearch": "Назад",
   "noResults": "Ничего не найдено",

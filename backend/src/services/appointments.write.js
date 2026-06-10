@@ -121,7 +121,7 @@ export async function create({ input, actor, force = false, employeeLookup = nul
       .input('visitor_phone', sql.NVarChar(40), input.visitorType === 'foreign' ? null : input.visitor?.phone ?? null)
       .input('boss_id', sql.NVarChar(20), input.bossId)
       .input('cause_id', sql.NVarChar(50), input.causeId)
-      .input('custom_cause', sql.NVarChar(500), input.causeId === 'other' ? input.customCause ?? null : null)
+      .input('custom_cause', sql.NVarChar(500), input.causeId === 'other' || input.causeId === 'work' ? input.customCause ?? null : null)
       .input('urgent', sql.Bit, input.urgent ? 1 : 0)
       .input('visit_date', sql.Date, visitDate)
       .input('status', sql.NVarChar(20), 'pending');

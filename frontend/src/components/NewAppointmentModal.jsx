@@ -76,7 +76,7 @@ export function NewAppointmentModal({ open, onClose }) {
         causeId,
         urgent,
         date,
-        ...(causeId === 'other' ? { customCause } : {}),
+        ...(causeId === 'other' || causeId === 'work' ? { customCause } : {}),
       };
     } else {
       input = {
@@ -86,7 +86,7 @@ export function NewAppointmentModal({ open, onClose }) {
         causeId,
         urgent,
         date,
-        ...(causeId === 'other' ? { customCause } : {}),
+        ...(causeId === 'other' || causeId === 'work' ? { customCause } : {}),
       };
     }
 
@@ -197,9 +197,11 @@ export function NewAppointmentModal({ open, onClose }) {
             />
           </div>
         )}
-        {causeId === 'other' && (
+        {(causeId === 'other' || causeId === 'work') && (
           <div className="col-span-2">
-            <label className="text-sm text-stone-600">{t('customCause')}</label>
+            <label className="text-sm text-stone-600">
+              {causeId === 'work' ? t('workCause') : t('customCause')}
+            </label>
             <Input value={customCause} onChange={(e) => setCustomCause(e.target.value)} />
           </div>
         )}
